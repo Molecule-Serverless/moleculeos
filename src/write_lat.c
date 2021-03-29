@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	user_param.verb    = WRITE;
 	user_param.tst     = LAT;
 	user_param.r_flag  = &report;
-#define VERSION "5.16" //add by Dd
+#define VERSION "5.70" //add by Dd
 	strncpy(user_param.version, VERSION, sizeof(user_param.version));
 
 	/* Configure the parameters values according to user arguments or defalut values. */
