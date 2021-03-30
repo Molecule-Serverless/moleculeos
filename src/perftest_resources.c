@@ -4104,6 +4104,12 @@ int molecule_ipc_send(struct pingpong_context *ctx,struct perftest_parameters *u
 	//client
 	if (user_param->machine != SERVER){
 		*post_buf = (char)'d';
+		err = post_send_method(ctx, 0, user_param);
+
+		if (err) {
+			fprintf(stderr,"[%s] Couldn't post msg\n", __func__);
+			return 1;
+		}
 		do { ne = ibv_poll_cq(ctx->send_cq, 1, &wc); } while (ne == 0);
 
 		if(ne > 0) {
