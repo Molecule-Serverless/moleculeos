@@ -1,4 +1,10 @@
 /*
+ * Molecule IPC (HeteroIPC based on RDMA)
+ * by Dong Du (IPADS @ SJTU)
+ * The code is modified from perfbench
+ * */
+
+/*
  * Copyright (c) 2005 Topspin Communications.  All rights reserved.
  * Copyright (c) 2005 Mellanox Technologies Ltd.  All rights reserved.
  * Copyright (c) 2005 Hewlett Packard, Inc (Grant Grundler)
@@ -48,39 +54,15 @@
 #include "perftest_resources.h"
 #include "perftest_communication.h"
 
-/******************************************************************************
- *
- ******************************************************************************/
-int main(int argc, char *argv[])
+/* Molecule-RDMA IPC interfaces=====================Begin====================*/
+static struct perftest_parameters	user_param;
+static struct pingpong_context		ctx;
+/* Molecule-RDMA IPC interfaces=====================End++====================*/
+
+/* Molecule-RDMA IPC Implementation==============Begin====================*/
+int molecule_common_setup(int uuid) //common setup code to initialize
 {
-	int				ret_parser, i = 0, rc;
-	struct report_options		report;
-	struct pingpong_context		ctx;
-	struct pingpong_dest		*my_dest  = NULL;
-	struct pingpong_dest		*rem_dest = NULL;
 	struct ibv_device		*ib_dev;
-	struct perftest_parameters	user_param;
-	struct perftest_comm		user_comm;
-
-	/* init default values to user's parameters */
-	memset(&ctx,0,sizeof(struct pingpong_context));
-	memset(&user_param, 0, sizeof(struct perftest_parameters));
-	memset(&user_comm,0,sizeof(struct perftest_comm));
-
-	user_param.verb    = WRITE;
-	user_param.tst     = LAT;
-	user_param.r_flag  = &report;
-#define VERSION "5.70" //add by Dd
-	strncpy(user_param.version, VERSION, sizeof(user_param.version));
-
-	/* Configure the parameters values according to user arguments or defalut values. */
-	ret_parser = parser(&user_param,argv,argc);
-	if (ret_parser) {
-		if (ret_parser != VERSION_EXIT && ret_parser != HELP_EXIT)
-			fprintf(stderr," Parser function exited with Error\n");
-		return FAILURE;
-	}
-
 	/* In case of ib_write_lat, PCI relaxed ordering should be disabled since we're polling for data change
 	 * of last packet so in case of relaxed odering we might get the last packet in wrong order thus the test
 	 * would be incorrect
@@ -104,6 +86,66 @@ int main(int argc, char *argv[])
 		fprintf(stderr, " Couldn't get context for the device\n");
 		return FAILURE;
 	}
+
+
+	return 0;
+}
+int molecule_rdma_client_setup(int uuid)
+{
+
+	return 0;
+}
+int molecule_rdma_server_setup(int uuid)
+{
+	return 0;
+}
+int molecule_rdma_finish(int uuid)
+{
+	return 0;
+}
+int molecule_rdma_read(int uuid)
+{
+	return 0;
+}
+int molecule_rdma_write(int uuid)
+{
+	return 0;
+}
+/* Molecule-RDMA IPC Implementation==============End++====================*/
+
+
+/******************************************************************************
+ *
+ ******************************************************************************/
+int main(int argc, char *argv[])
+{
+	int				ret_parser, i = 0, rc;
+	struct report_options		report;
+	struct pingpong_dest		*my_dest  = NULL;
+	struct pingpong_dest		*rem_dest = NULL;
+	struct perftest_comm		user_comm;
+
+	/* 1. init default values to user's parameters */
+	memset(&ctx,0,sizeof(struct pingpong_context));
+	memset(&user_param, 0, sizeof(struct perftest_parameters));
+	memset(&user_comm,0,sizeof(struct perftest_comm));
+
+	user_param.verb    = WRITE;
+	user_param.tst     = LAT;
+	user_param.r_flag  = &report;
+#define VERSION "5.70" //add by Dd
+	strncpy(user_param.version, VERSION, sizeof(user_param.version));
+
+	/* 2. Configure the parameters values according to user arguments or defalut values. */
+	ret_parser = parser(&user_param,argv,argc);
+	if (ret_parser) {
+		if (ret_parser != VERSION_EXIT && ret_parser != HELP_EXIT)
+			fprintf(stderr," Parser function exited with Error\n");
+		return FAILURE;
+	}
+
+	molecule_common_setup(0x00); //dummy uuid currently
+
 
 	/* Verify user parameters that require the device context,
 	 * the function will print the relevent error info. */
