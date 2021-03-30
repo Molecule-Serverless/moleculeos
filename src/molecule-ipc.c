@@ -63,7 +63,7 @@ static struct perftest_comm		user_comm;
 /* Molecule-RDMA IPC Implementation==============Begin====================*/
 int molecule_common_setup(int uuid) //common setup code to initialize
 {
-	int i;
+	int i=0, rc=0;
 	struct pingpong_dest		*my_dest  = NULL;
 	struct pingpong_dest		*rem_dest = NULL;
 	struct ibv_device		*ib_dev;
@@ -262,7 +262,7 @@ int molecule_rdma_write(int uuid)
  ******************************************************************************/
 int main(int argc, char *argv[])
 {
-	int				ret_parser, i = 0, rc;
+	int				ret_parser, i = 0;
 	struct report_options		report;
 
 	/* 1. init default values to user's parameters */
