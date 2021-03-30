@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 	struct report_options		report;
 
 	/* 1. init default values to user's parameters */
-	memset(&ctx, 0 ,sizeof(struct pingpong_context));
+	memset(&ctx, 0, sizeof(struct pingpong_context));
 	memset(&user_param, 0, sizeof(struct perftest_parameters));
 	memset(&user_comm, 0, sizeof(struct perftest_comm));
 
@@ -294,6 +294,9 @@ int main(int argc, char *argv[])
 		printf((user_param.cpu_util_data.enable ? RESULT_EXT_CPU_UTIL : RESULT_EXT));
 	}
 
+	molecule_ipc_setup(&ctx, &user_param);
+	molecule_ipc_send(&ctx, &user_param);
+#if 0
 	if (user_param.test_method == RUN_ALL) {
 
 		for (i = 1; i < 24 ; ++i) {
@@ -314,6 +317,7 @@ int main(int argc, char *argv[])
 		}
 		user_param.test_type == ITERATIONS ? print_report_lat(&user_param) : print_report_lat_duration(&user_param);
 	}
+#endif
 
 	if (user_param.output == FULL_VERBOSITY) {
 		printf(RESULT_LINE);

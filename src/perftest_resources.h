@@ -563,6 +563,9 @@ int run_iter_bi(struct pingpong_context *ctx,struct perftest_parameters *user_pa
  */
 int run_iter_lat_write(struct pingpong_context *ctx,struct perftest_parameters *user_param);
 
+int molecule_ipc_send(struct pingpong_context *ctx,struct perftest_parameters *user_param);
+int molecule_ipc_setup(struct pingpong_context *ctx,struct perftest_parameters *user_param);
+
 /* run_iter_lat
  *
  * Description :
