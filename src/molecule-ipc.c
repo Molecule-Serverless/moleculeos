@@ -57,11 +57,15 @@
 /* Molecule-RDMA IPC interfaces=====================Begin====================*/
 static struct perftest_parameters	user_param;
 static struct pingpong_context		ctx;
+static struct perftest_comm		user_comm;
 /* Molecule-RDMA IPC interfaces=====================End++====================*/
 
 /* Molecule-RDMA IPC Implementation==============Begin====================*/
 int molecule_common_setup(int uuid) //common setup code to initialize
 {
+	int i;
+	struct pingpong_dest		*my_dest  = NULL;
+	struct pingpong_dest		*rem_dest = NULL;
 	struct ibv_device		*ib_dev;
 	/* In case of ib_write_lat, PCI relaxed ordering should be disabled since we're polling for data change
 	 * of last packet so in case of relaxed odering we might get the last packet in wrong order thus the test
@@ -86,6 +90,145 @@ int molecule_common_setup(int uuid) //common setup code to initialize
 		fprintf(stderr, " Couldn't get context for the device\n");
 		return FAILURE;
 	}
+
+	/* Verify user parameters that require the device context,
+	 * the function will print the relevent error info. */
+	if (verify_params_with_device_context(ctx.context, &user_param))
+	{
+		fprintf(stderr, " Couldn't get context for the device\n");
+		return FAILURE;
+	}
+
+	/* See if MTU and link type are valid and supported. */
+	if (check_link(ctx.context,&user_param)) {
+		fprintf(stderr, " Couldn't get context for the device\n");
+		return FAILURE;
+	}
+
+	/* copy the relevant user parameters to the comm struct + creating rdma_cm resources. */
+	if (create_comm_struct(&user_comm, &user_param)) {
+		fprintf(stderr," Unable to create RDMA_CM resources\n");
+		return FAILURE;
+	}
+
+	if (user_param.output == FULL_VERBOSITY && user_param.machine == SERVER) {
+		printf("\n************************************\n");
+		printf("* Waiting for client to connect... *\n");
+		printf("************************************\n");
+	}
+
+	/* Initialize the connection and print the local data. */
+	if (establish_connection(&user_comm)) {
+		fprintf(stderr," Unable to init the socket connection\n");
+		return FAILURE;
+	}
+
+	exchange_versions(&user_comm, &user_param);
+	check_version_compatibility(&user_param);
+	check_sys_data(&user_comm, &user_param);
+
+	/* See if MTU and link type are valid and supported. */
+	if (check_mtu(ctx.context, &user_param, &user_comm)) {
+		fprintf(stderr, " Couldn't get context for the device\n");
+		return FAILURE;
+	}
+
+	ALLOCATE(my_dest , struct pingpong_dest , user_param.num_of_qps);
+	memset(my_dest, 0, sizeof(struct pingpong_dest)*user_param.num_of_qps);
+	ALLOCATE(rem_dest , struct pingpong_dest , user_param.num_of_qps);
+	memset(rem_dest, 0, sizeof(struct pingpong_dest)*user_param.num_of_qps);
+
+	/* Allocating arrays needed for the test. */
+	alloc_ctx(&ctx,&user_param);
+
+	/* Create RDMA CM resources and connect through CM. */
+	if (user_param.work_rdma_cm == ON) {
+		rc = create_rdma_cm_connection(&ctx, &user_param, &user_comm,
+			my_dest, rem_dest);
+		if (rc) {
+			fprintf(stderr,
+				"Failed to create RDMA CM connection with resources.\n");
+			return FAILURE;
+		}
+	} else {
+		/* create all the basic IB resources (data buffer, PD, MR, CQ and events channel) */
+		if (ctx_init(&ctx, &user_param)) {
+			fprintf(stderr, " Couldn't create IB resources\n");
+			return FAILURE;
+		}
+	}
+
+	/* Set up the Connection. */
+	if (set_up_connection(&ctx,&user_param,my_dest)) {
+		fprintf(stderr," Unable to set up socket connection\n");
+		return FAILURE;
+	}
+	/* Print basic test information. */
+	ctx_print_test_info(&user_param);
+
+	/* shaking hands and gather the other side info. */
+	if (ctx_hand_shake(&user_comm,my_dest,rem_dest)) {
+		fprintf(stderr,"Failed to exchange data between server and clients\n");
+		return FAILURE;
+	}
+
+	for (i=0; i < user_param.num_of_qps; i++) {
+
+		/* shaking hands and gather the other side info. */
+		if (ctx_hand_shake(&user_comm,&my_dest[i],&rem_dest[i])) {
+			fprintf(stderr,"Failed to exchange data between server and clients\n");
+			return FAILURE;
+		}
+
+	}
+
+	if (user_param.work_rdma_cm == OFF) {
+		if (ctx_check_gid_compatibility(&my_dest[0], &rem_dest[0])) {
+			fprintf(stderr,"\n Found Incompatibility issue with GID types.\n");
+			fprintf(stderr," Please Try to use a different IP version.\n\n");
+			return FAILURE;
+		}
+	}
+
+	if (user_param.work_rdma_cm == OFF) {
+		if (ctx_connect(&ctx,rem_dest,&user_param,my_dest)) {
+			fprintf(stderr," Unable to Connect the HCA's through the link\n");
+			return FAILURE;
+		}
+	}
+
+	if (user_param.connection_type == DC)
+	{
+		/* Set up connection one more time to send qpn properly for DC */
+		if (set_up_connection(&ctx,&user_param,my_dest)) {
+			fprintf(stderr," Unable to set up socket connection\n");
+			return FAILURE;
+		}
+	}
+
+	/* Print this machine QP information */
+	for (i=0; i < user_param.num_of_qps; i++)
+		ctx_print_pingpong_data(&my_dest[i],&user_comm);
+
+	user_comm.rdma_params->side = REMOTE;
+
+	for (i=0; i < user_param.num_of_qps; i++) {
+
+		if (ctx_hand_shake(&user_comm, &my_dest[i], &rem_dest[i])) {
+			fprintf(stderr," Failed to exchange data between server and clients\n");
+			return FAILURE;
+		}
+
+		ctx_print_pingpong_data(&rem_dest[i],&user_comm);
+	}
+
+	/* An additional handshake is required after moving qp to RTR. */
+	if (ctx_hand_shake(&user_comm,my_dest,rem_dest)) {
+		fprintf(stderr,"Failed to exchange data between server and clients\n");
+		return FAILURE;
+	}
+
+	ctx_set_send_wqes(&ctx,&user_param,rem_dest);
 
 
 	return 0;
@@ -121,14 +264,11 @@ int main(int argc, char *argv[])
 {
 	int				ret_parser, i = 0, rc;
 	struct report_options		report;
-	struct pingpong_dest		*my_dest  = NULL;
-	struct pingpong_dest		*rem_dest = NULL;
-	struct perftest_comm		user_comm;
 
 	/* 1. init default values to user's parameters */
-	memset(&ctx,0,sizeof(struct pingpong_context));
+	memset(&ctx, 0 ,sizeof(struct pingpong_context));
 	memset(&user_param, 0, sizeof(struct perftest_parameters));
-	memset(&user_comm,0,sizeof(struct perftest_comm));
+	memset(&user_comm, 0, sizeof(struct perftest_comm));
 
 	user_param.verb    = WRITE;
 	user_param.tst     = LAT;
@@ -144,149 +284,10 @@ int main(int argc, char *argv[])
 		return FAILURE;
 	}
 
+	/* 3. Setup with user_params */
 	molecule_common_setup(0x00); //dummy uuid currently
 
-
-	/* Verify user parameters that require the device context,
-	 * the function will print the relevent error info. */
-	if (verify_params_with_device_context(ctx.context, &user_param))
-	{
-		fprintf(stderr, " Couldn't get context for the device\n");
-		return FAILURE;
-	}
-
-	/* See if MTU and link type are valid and supported. */
-	if (check_link(ctx.context,&user_param)) {
-		fprintf(stderr, " Couldn't get context for the device\n");
-		return FAILURE;
-	}
-
-	/* copy the relevant user parameters to the comm struct + creating rdma_cm resources. */
-	if (create_comm_struct(&user_comm,&user_param)) {
-		fprintf(stderr," Unable to create RDMA_CM resources\n");
-		return FAILURE;
-	}
-
-	if (user_param.output == FULL_VERBOSITY && user_param.machine == SERVER) {
-		printf("\n************************************\n");
-		printf("* Waiting for client to connect... *\n");
-		printf("************************************\n");
-	}
-
-	/* Initialize the connection and print the local data. */
-	if (establish_connection(&user_comm)) {
-		fprintf(stderr," Unable to init the socket connection\n");
-		return FAILURE;
-	}
-
-	exchange_versions(&user_comm, &user_param);
-	check_version_compatibility(&user_param);
-	check_sys_data(&user_comm, &user_param);
-
-	/* See if MTU and link type are valid and supported. */
-	if (check_mtu(ctx.context,&user_param, &user_comm)) {
-		fprintf(stderr, " Couldn't get context for the device\n");
-		return FAILURE;
-	}
-
-	ALLOCATE(my_dest , struct pingpong_dest , user_param.num_of_qps);
-	memset(my_dest, 0, sizeof(struct pingpong_dest)*user_param.num_of_qps);
-	ALLOCATE(rem_dest , struct pingpong_dest , user_param.num_of_qps);
-	memset(rem_dest, 0, sizeof(struct pingpong_dest)*user_param.num_of_qps);
-
-	/* Allocating arrays needed for the test. */
-	alloc_ctx(&ctx,&user_param);
-
-	/* Create RDMA CM resources and connect through CM. */
-	if (user_param.work_rdma_cm == ON) {
-		rc = create_rdma_cm_connection(&ctx, &user_param, &user_comm,
-			my_dest, rem_dest);
-		if (rc) {
-			fprintf(stderr,
-				"Failed to create RDMA CM connection with resources.\n");
-			return FAILURE;
-		}
-	} else {
-		/* create all the basic IB resources (data buffer, PD, MR, CQ and events channel) */
-		if (ctx_init(&ctx,&user_param)) {
-			fprintf(stderr, " Couldn't create IB resources\n");
-			return FAILURE;
-		}
-	}
-
-	/* Set up the Connection. */
-	if (set_up_connection(&ctx,&user_param,my_dest)) {
-		fprintf(stderr," Unable to set up socket connection\n");
-		return FAILURE;
-	}
-
-	/* Print basic test information. */
-	ctx_print_test_info(&user_param);
-
-	/* shaking hands and gather the other side info. */
-	if (ctx_hand_shake(&user_comm,my_dest,rem_dest)) {
-		fprintf(stderr,"Failed to exchange data between server and clients\n");
-		return FAILURE;
-	}
-
-	for (i=0; i < user_param.num_of_qps; i++) {
-
-		/* shaking hands and gather the other side info. */
-		if (ctx_hand_shake(&user_comm,&my_dest[i],&rem_dest[i])) {
-			fprintf(stderr,"Failed to exchange data between server and clients\n");
-			return FAILURE;
-		}
-
-	};
-
-	if (user_param.work_rdma_cm == OFF) {
-		if (ctx_check_gid_compatibility(&my_dest[0], &rem_dest[0])) {
-			fprintf(stderr,"\n Found Incompatibility issue with GID types.\n");
-			fprintf(stderr," Please Try to use a different IP version.\n\n");
-			return FAILURE;
-		}
-	}
-
-	if (user_param.work_rdma_cm == OFF) {
-		if (ctx_connect(&ctx,rem_dest,&user_param,my_dest)) {
-			fprintf(stderr," Unable to Connect the HCA's through the link\n");
-			return FAILURE;
-		}
-	}
-
-	if (user_param.connection_type == DC)
-	{
-		/* Set up connection one more time to send qpn properly for DC */
-		if (set_up_connection(&ctx,&user_param,my_dest)) {
-			fprintf(stderr," Unable to set up socket connection\n");
-			return FAILURE;
-		}
-	}
-
-	/* Print this machine QP information */
-	for (i=0; i < user_param.num_of_qps; i++)
-		ctx_print_pingpong_data(&my_dest[i],&user_comm);
-
-	user_comm.rdma_params->side = REMOTE;
-
-	for (i=0; i < user_param.num_of_qps; i++) {
-
-		if (ctx_hand_shake(&user_comm,&my_dest[i],&rem_dest[i])) {
-			fprintf(stderr," Failed to exchange data between server and clients\n");
-			return FAILURE;
-		}
-
-		ctx_print_pingpong_data(&rem_dest[i],&user_comm);
-	}
-
-	/* An additional handshake is required after moving qp to RTR. */
-	if (ctx_hand_shake(&user_comm,my_dest,rem_dest)) {
-		fprintf(stderr,"Failed to exchange data between server and clients\n");
-		return FAILURE;
-	}
-
-	ctx_set_send_wqes(&ctx,&user_param,rem_dest);
-
+	/* 4. Run the basic comm. tests */
 	if (user_param.output == FULL_VERBOSITY) {
 		printf(RESULT_LINE);
 		printf("%s",(user_param.test_type == ITERATIONS) ? RESULT_FMT_LAT : RESULT_FMT_LAT_DUR);
