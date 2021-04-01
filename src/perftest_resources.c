@@ -4076,12 +4076,12 @@ int molecule_ipc_send(struct pingpong_context *ctx,struct perftest_parameters *u
 	int 			total_gap_cycles = user_param->latency_gap * cpu_mhz;
 	cycles_t 		end_cycle, start_gap=0;
 
-	if((user_param->use_xrc || user_param->connection_type == DC))
-		poll_buf_offset = 1;
+	//if((user_param->use_xrc || user_param->connection_type == DC))
+	//	poll_buf_offset = 1;
 
 	post_buf = (char*)ctx->buf[0] + user_param->size - 1;
-	poll_buf = (char*)ctx->buf[0] + (user_param->num_of_qps + poll_buf_offset)*BUFF_SIZE(ctx->size, ctx->cycle_buffer) + user_param->size - 1;
-#if 1 //by Dd
+	//poll_buf = (char*)ctx->buf[0] + (user_param->num_of_qps + poll_buf_offset)*BUFF_SIZE(ctx->size, ctx->cycle_buffer) + user_param->size - 1;
+#if 0 //by Dd
 	fprintf(stderr, "[%s] post_buf size: %d, poll_buf size: %d\n", __func__, user_param->size-1,
 			(user_param->num_of_qps + poll_buf_offset)*BUFF_SIZE(ctx->size, ctx->cycle_buffer) + user_param->size - 1);
 #endif
@@ -4122,71 +4122,60 @@ int molecule_ipc_send(struct pingpong_context *ctx,struct perftest_parameters *u
 			return FAILURE;
 		}
 		fprintf(stderr, "[%s] Client sent msg:%s\n", __func__, post_buf);
+	} else{
+		fprintf(stderr, "[%s] Error, I should not be Client\n", __func__);
+	}
+
+	return 0;
+}
+
+int molecule_ipc_recv(struct pingpong_context *ctx,struct perftest_parameters *user_param)
+{
+	uint64_t                scnt = 0;
+	uint64_t                ccnt = 0;
+	uint64_t                rcnt = 0;
+	int                     ne;
+	int			err = 0;
+	int 			poll_buf_offset = 0;
+	volatile char           *poll_buf = NULL;
+	volatile char           *post_buf = NULL;
+
+	struct ibv_wc           wc;
+
+	int 			cpu_mhz = get_cpu_mhz(user_param->cpu_freq_f);
+	int 			total_gap_cycles = user_param->latency_gap * cpu_mhz;
+	cycles_t 		end_cycle, start_gap=0;
+
+	if((user_param->use_xrc || user_param->connection_type == DC))
+		poll_buf_offset = 1;
+
+	poll_buf = (char*)ctx->buf[0] + (user_param->num_of_qps + poll_buf_offset)*BUFF_SIZE(ctx->size, ctx->cycle_buffer) + user_param->size - 1;
+#if 0 //by Dd
+	fprintf(stderr, "[%s] post_buf size: %d, poll_buf size: %d\n", __func__, user_param->size-1,
+			(user_param->num_of_qps + poll_buf_offset)*BUFF_SIZE(ctx->size, ctx->cycle_buffer) + user_param->size - 1);
+#endif
+
+	/* Duration support in latency tests. */
+	if (user_param->test_type == DURATION) {
+		fprintf(stderr, "[%s] Warning, Duration is enabled\n", __func__);
+		duration_param=user_param;
+		duration_param->state = START_STATE;
+		signal(SIGALRM, catch_alarm);
+		user_param->iters = 0;
+		if (user_param->margin > 0)
+			alarm(user_param->margin);
+		else
+			catch_alarm(0);
 	}
 
 	//server
 	if (user_param->machine == SERVER){
 		while (*poll_buf != 'd');
 		fprintf(stderr, "[%s] Server got msg:%s\n", __func__, poll_buf);
+	} else{
+		fprintf(stderr, "[%s] Error, I should not be Server\n", __func__);
 	}
 
-#if 0
-	while (scnt < user_param->iters || ccnt < user_param->iters || rcnt < user_param->iters
-			|| ((user_param->test_type == DURATION && user_param->state != END_STATE))) {
-
-		if ((rcnt < user_param->iters || user_param->test_type == DURATION) && !(scnt < 1 && user_param->machine == SERVER)) {
-			rcnt++;
-			while (*poll_buf != (char)rcnt && user_param->state != END_STATE);
-		}
-
-		if (scnt < user_param->iters || user_param->test_type == DURATION) {
-
-			if (user_param->latency_gap) {
-				start_gap = get_cycles();
-				end_cycle = start_gap + total_gap_cycles;
-				while (get_cycles() < end_cycle) {
-					continue;
-				}
-			}
-
-			if (user_param->test_type == ITERATIONS)
-				user_param->tposted[scnt] = get_cycles();
-
-			*post_buf = (char)++scnt;
-
-			err = post_send_method(ctx, 0, user_param);
-
-			if (err) {
-				fprintf(stderr,"Couldn't post send: scnt=%lu\n",scnt);
-				return 1;
-			}
-		}
-
-		if (user_param->test_type == DURATION && user_param->state == END_STATE)
-			break;
-
-		if (ccnt < user_param->iters || user_param->test_type == DURATION) {
-
-			do { ne = ibv_poll_cq(ctx->send_cq, 1, &wc); } while (ne == 0);
-
-			if(ne > 0) {
-
-				if (wc.status != IBV_WC_SUCCESS) {
-					NOTIFY_COMP_ERROR_SEND(wc,scnt,ccnt);
-					return 1;
-				}
-
-				ccnt++;
-				if (user_param->test_type==DURATION && user_param->state == SAMPLE_STATE)
-					user_param->iters++;
-
-			} else if (ne < 0) {
-				fprintf(stderr, "poll CQ failed %d\n", ne);
-				return FAILURE;
-			}
-		}
-	}
-#endif
 	return 0;
 }
 

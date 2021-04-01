@@ -294,8 +294,15 @@ int main(int argc, char *argv[])
 		printf((user_param.cpu_util_data.enable ? RESULT_EXT_CPU_UTIL : RESULT_EXT));
 	}
 
+
 	molecule_ipc_setup(&ctx, &user_param);
-	molecule_ipc_send(&ctx, &user_param);
+
+	/* Start to run */
+	if (user_param.machine == SERVER) {
+		molecule_ipc_recv(&ctx, &user_param);
+	}else{
+		molecule_ipc_send(&ctx, &user_param);
+	}
 #if 0
 	if (user_param.test_method == RUN_ALL) {
 
