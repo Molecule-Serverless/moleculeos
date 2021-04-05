@@ -1,4 +1,14 @@
-## RDMALib for Molecule
+## MoleculeOS
+
+This is the globalOS of Molecule (or MoleculeOS).
+
+
+### High-level Abstraction
+
+MoleculeOS now provides:
+- IPC (cross-device IPC, based on RDMA)
+- cfork (@lqy)
+
 
 ### Build
 
