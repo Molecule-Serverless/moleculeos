@@ -5,7 +5,7 @@ RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 All: molecule-ipc
 
 molecule-ipc: molecule-ipc.c $(RDMA_LIB_SOURCES)
-	gcc -o $@ $^ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
+	gcc -o $@ $^ -Irdma-lib/ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
 
 write_lat: write_lat.c $(LIB_SOURCES)
 	gcc -o write_lat *.c -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE

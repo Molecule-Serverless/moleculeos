@@ -49,10 +49,12 @@
 #include <malloc.h>
 #endif
 
-#include "get_clock.h"
-#include "perftest_parameters.h"
-#include "perftest_resources.h"
-#include "perftest_communication.h"
+
+// Include files from RDMA libs
+#include <get_clock.h>
+#include <perftest_parameters.h>
+#include <perftest_resources.h>
+#include <perftest_communication.h>
 
 /* Molecule-RDMA IPC interfaces=====================Begin====================*/
 static struct perftest_parameters	user_param;
