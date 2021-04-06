@@ -155,5 +155,9 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, "[Client] Ready to communicate with server:%d\n", args.server_id);
 	communicate(fifo_self, fifo_server, &args, &signal_action);
 
+	fifo_finish(fifo_server);
+	fifo_finish(fifo_self);
+	fifo_clean();
+
 	return EXIT_SUCCESS;
 }

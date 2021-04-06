@@ -17,6 +17,17 @@ MoleculeOS now provides:
 
 ### Demos
 
+
+#### User-client and User-server communicate
+
+	cd src/
+	make user
+	./user-server&
+	# You should see server's pid, e.g., 18855
+	./user-client -i 18855 #Here, -i indicates the server's ID (pid
+
+	#Now you should see the results of their communication
+
 #### RDMA-IPC
 
 In the server:

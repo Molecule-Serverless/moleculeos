@@ -96,6 +96,21 @@ void fifo_finish(int fifo_fd) {
 	close(fifo_fd);
 }
 
+/*Note(DD): fifo_clean will not close a fifo_fd, please do it through fifo_finish */
+void fifo_clean(void) //destory self-fifo
+{
+	char fifo_path[FIFO_PATH_LEN]="";
+	int fifo_fd;
+	int uuid = getpid();
+
+	sprintf(fifo_path, FIFO_PATH_TEMPLATE, uuid);
+	fprintf(stderr, "[%s] fifo_path: %s\n",__func__, fifo_path);
+
+	if (remove(fifo_path) == -1) {
+		throw("Error removing FIFO");
+	}
+}
+
 int fifo_read(int fifo_fd, char* buf, int len){
 	int i;
 	assert(len>0);

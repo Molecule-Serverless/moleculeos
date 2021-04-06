@@ -74,6 +74,7 @@ void communicate(int fifo_self,
 		//fprintf(stderr, "[GlobalOS] signal invoked\n");
 
 		//benchmark(&bench);
+		fifo_finish(fifo_client);
 	}
 
 	//evaluate(&bench, args);
@@ -130,6 +131,9 @@ int main(int argc, char* argv[]) {
 	fifo_self = fifo_init();
 
 	communicate(fifo_self, NULL, &signal_action);
+
+	fifo_finish(fifo_self);
+	fifo_clean();
 
 	return EXIT_SUCCESS;
 }
