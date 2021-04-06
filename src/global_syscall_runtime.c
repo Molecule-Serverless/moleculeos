@@ -14,8 +14,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#define GLOBAL_OS_IP "127.0.0.1"
-#define GLOBAL_OS_PORT 0xfeeb
+#include <global_syscall_runtime.h>
 
 int connect_global_OS(void)
 {
