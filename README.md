@@ -18,13 +18,13 @@ MoleculeOS now provides:
 ### Demos
 
 
-#### User-client and User-server communicate
+#### (Example/ipc) User-client and User-server communicate
 
 	cd src/
-	make user
-	./user-server&
+	make example-ipc
+	./example-ipc-server&
 	# You should see server's pid, e.g., 18855
-	./user-client -i 18855 #Here, -i indicates the server's ID (pid
+	./example-ipc-client -i 18855 #Here, -i indicates the server's ID (pid
 
 	#Now you should see the results of their communication
 

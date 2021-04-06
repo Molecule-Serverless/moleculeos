@@ -10,6 +10,7 @@ common/utility.c
 
 RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 LOCAL_IPC_LIB_SOURCES = $(addprefix local-ipc/, $(LOCAL_IPC_LIB_SOURCES_files))
+SYSCALL_RUNTIME_LIB_SOURCES = global_syscall_interfaces.c global_syscall_runtime.c
 
 All: molecule-rdma
 
@@ -28,13 +29,22 @@ local-ipc-server: local-ipc/fifo/server.c $(LOCAL_IPC_LIB_SOURCES)
 write_lat: write_lat.c $(LIB_SOURCES)
 	gcc -o write_lat *.c -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
 
-user: user-client user-server
-	@echo build user-client user-server success
+example-ipc: example-ipc-client example-ipc-server
+	@echo build example/ipc success
 
-user-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+example-neighbor-ipc: example-neighboripc-client example-neighboripc-server
+	@echo build example/ipc success
+
+example-ipc-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
-user-server: examples/ipc/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+example-ipc-server: examples/ipc/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
+
+example-neighboripc-client: examples/neighbor-ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
+
+example-neighboripc-server: examples/neighbor-ipc/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 clean:
