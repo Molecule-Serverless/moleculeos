@@ -40,6 +40,8 @@
  * */
 
 /* FIFO-based IPC */
+
+//The two interfaces are deprecated, just for compaitbility use in Molecule
 int fifo_client_setup(int uuid); //return a fifo_fd
 int fifo_server_setup(int uuid); //return a fifo_fd
 
