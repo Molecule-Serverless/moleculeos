@@ -11,9 +11,9 @@ common/utility.c
 RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 LOCAL_IPC_LIB_SOURCES = $(addprefix local-ipc/, $(LOCAL_IPC_LIB_SOURCES_files))
 
-All: molecule-ipc
+All: molecule-rdma
 
-molecule-ipc: molecule-ipc.c $(RDMA_LIB_SOURCES)
+molecule-rdma: molecule-rdma.c $(RDMA_LIB_SOURCES)
 	gcc -o $@ $^ -Irdma-lib/ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
 
 local-ipc: local-ipc-client local-ipc-server
@@ -28,6 +28,14 @@ local-ipc-server: local-ipc/fifo/server.c $(LOCAL_IPC_LIB_SOURCES)
 write_lat: write_lat.c $(LIB_SOURCES)
 	gcc -o write_lat *.c -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
 
+user: user-client user-server
+	@echo build user-client user-server success
+
+user-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
+
+user-server: examples/ipc/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 clean:
-	rm *.o write_lat -f
+	rm *.o write_lat -f user-client user-server

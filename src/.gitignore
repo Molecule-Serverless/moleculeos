@@ -1,3 +1,6 @@
 write_lat
+molecule-rdma
+user-client
+user-server
 tags
 *.swp
