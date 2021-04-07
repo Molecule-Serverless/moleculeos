@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
 
 	register_self_global();
 
-	setup_client_signals(&signal_action);
+	//setup_client_signals(&signal_action);
 	//stream = open_fifo(&signal_action);
 	fprintf(stderr, "[Client] Before fifo_init\n");
 	fifo_self = fifo_init();
