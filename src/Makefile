@@ -14,6 +14,9 @@ SYSCALL_RUNTIME_LIB_SOURCES = global_syscall_interfaces.c global_syscall_runtime
 
 All: molecule-rdma
 
+globalos: global_syscall.c
+	gcc -o $@ $^ -Iinclude
+
 molecule-rdma: molecule-rdma.c $(RDMA_LIB_SOURCES)
 	gcc -o $@ $^ -Irdma-lib/ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
 
@@ -48,4 +51,4 @@ example-neighboripc-server: examples/neighbor-ipc/server.c ipc.c $(LOCAL_IPC_LIB
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 clean:
-	rm *.o write_lat -f user-client user-server
+	rm *.o write_lat -f user-client user-server example-ipc-client example-ipc-server example-neighboripc-client example-neighboripc-server global_syscall

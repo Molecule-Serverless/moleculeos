@@ -6,6 +6,8 @@
 #ifndef GLOBAL_SYSCALL_RUNTIME_H
 #define GLOBAL_SYSCALL_RUNTIME_H
 
+//#define SYSCALL_MSG_FORMAT "id: %d func:%s args1:%d args2:%d args3:%d args4:%d"
+
 int register_self_global(void); //return a global pid
 int unregister_self_global(void); //return a status code
 int global_fifo_init(int local_fifo); //return a global fifo_fd

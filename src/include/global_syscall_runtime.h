@@ -16,8 +16,13 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#define GLOBAL_OS_IP "127.0.0.1"
-#define GLOBAL_OS_PORT 0xfeeb
+#include <global_syscall_protocol.h>
+
+//#define GLOBAL_OS_IP "127.0.0.1"
+//#define GLOBAL_OS_PORT 0xfeeb
+//#define SYSCALL_REQ_FORMAT "id: %d func:%s args1:%d args2:%d args3:%d args4:%d"
+//#define SYSCALL_RSP_FORMAT "ret: %d"
+
 
 int connect_global_OS(void);
 

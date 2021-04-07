@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include <global_syscall_runtime.h>
 
@@ -52,17 +53,27 @@ int invoke_global_syscall(int global_os_fd, char * syscall)
 {
 	char recvBuff[1024];
 	int n;
+	int ret;
 	memset(recvBuff, '0',sizeof(recvBuff));
 
 	fprintf(stderr, "[GlobalOS Runtime] Issue Syscall: %s\n", syscall);
 	write(global_os_fd, syscall, strlen(syscall));
 
+#if 0
 	while ( (n = read(global_os_fd, recvBuff, sizeof(recvBuff)-1)) > 0)
 	{
 		recvBuff[n] = 0;
 		fprintf(stderr, "[GlobalOS Runtime] Syscall Return: %s\n", recvBuff);
 	}
+#else
+	n = read(global_os_fd, recvBuff, sizeof(recvBuff)-1);
+	assert(n>0);
+	recvBuff[n] = 0;
+	fprintf(stderr, "[GlobalOS Runtime] Syscall Return: %s\n", recvBuff);
+#endif
+	sscanf(recvBuff, SYSCALL_RSP_FORMAT, &ret);
 
+	return ret;
 	return 0;
 }
 

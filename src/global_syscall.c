@@ -5,10 +5,16 @@
 #include<ctype.h>
 #include<string.h>
 
+#include <global_syscall_protocol.h>
+
 #define MAXLEN 1024
 #define SERV_PORT 0xfeeb //The reverse of 0xbeef
 #define MAX_OPEN_FD 1024
 
+/* Global Process Table */
+#define GLOBAL_PROCESS_LIST_SIZE 4096
+int global_process[GLOBAL_PROCESS_LIST_SIZE];
+static int global_process_now = 0;
 
 int global_syscall_loop(void)
 {
@@ -17,7 +23,7 @@ int global_syscall_loop(void)
     struct sockaddr_in cliaddr,servaddr;
     socklen_t clilen = sizeof(cliaddr);
     struct epoll_event tep,ep[MAX_OPEN_FD];
-    char * unsupported = "Syscall unsupported";
+    //char * unsupported = "Syscall unsupported";
 
     listenfd = socket(AF_INET,SOCK_STREAM,0);
 
@@ -31,6 +37,8 @@ int global_syscall_loop(void)
     tep.data.fd = listenfd;
 
     ret = epoll_ctl(efd,EPOLL_CTL_ADD,listenfd,&tep);
+
+    fprintf(stderr, "[%s] globalOS connection inited\n", __func__);
 
     for (;;)
     {
@@ -54,8 +62,34 @@ int global_syscall_loop(void)
                 }
                 else
                 {
+		    //handle global syscall here
+		    int client_id, func_args1, func_args2, func_args3, func_args4;
+		    char func_name[256];
+		    char sys_resp[256];
+		    int ret;
 		    fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
-		    write(connfd, unsupported, strlen(unsupported));
+
+		    sscanf(buf, SYSCALL_REQ_FORMAT, &client_id, func_name, &func_args1,
+				    &func_args2, &func_args3, &func_args4);
+
+		    fprintf(stderr, "[%s] after parse requests, func_name:%s\n", __func__, func_name);
+
+		    if (strcmp(func_name, "RegisterSelfGlobal") == 0) {
+			    global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
+			    if (!global_process[global_process_now]){
+			    	global_process[global_process_now] = 1;
+				ret = global_process_now;
+			    }
+		    	fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
+		    }else{
+			    //unsupported
+			    ret = -1;
+		    	fprintf(stderr, "[%s] Global syscall(%s) unknown\n", __func__, func_name);
+		    }
+		    sprintf(sys_resp, SYSCALL_RSP_FORMAT, ret);
+
+		    write(connfd, sys_resp, strlen(sys_resp));
+		    //write(connfd, unsupported, strlen(unsupported));
 #if 0
                     for (int j = 0; j < bytes; ++j)
                     {
@@ -70,10 +104,16 @@ int global_syscall_loop(void)
     return 0;
 }
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG //for debug
 int main(void)
 {
+
+	//init
+	int i;
+	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++)
+		global_process[i] = 0;
+	fprintf(stderr, "finish init\n");
 	return global_syscall_loop();
 }
 #endif

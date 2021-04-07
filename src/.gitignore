@@ -4,3 +4,7 @@ user-client
 user-server
 tags
 *.swp
+example-neighboripc-client
+example-neighboripc-server
+global_syscall
+globalos
