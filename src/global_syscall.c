@@ -1,9 +1,11 @@
 #include<stdio.h>
+#include<stdlib.h>
 #include<arpa/inet.h>
 #include<sys/epoll.h>
 #include<unistd.h>
 #include<ctype.h>
 #include<string.h>
+#include<sys/shm.h>
 
 #include <global_syscall_protocol.h>
 #include <global_syscall.h>
@@ -207,8 +209,39 @@ int syscall_fifo_read(int global_fifo, int shmid, int length)
 
 int syscall_fifo_write(int global_fifo, int shmid, int length)
 {
-	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
-	return 0;
+	/* Test of shm */
+		char* shared_memory;
+		// Key for the memory segment
+		key_t segment_key;
+		int segment_id;
+		int shm_uuid = 1;
+		char shmid_string[256];
+
+		sprintf(shmid_string, "%d", shmid);
+
+		//segment_key = ftok(itoa(shmid), 'X');
+		segment_key = ftok(shmid_string, 'X');
+		segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+		if (segment_id < 0) {
+			//throw("Could not get segment");
+			fprintf(stderr, "[Error@%s] can not get segment\n", __func__);
+			return -1;
+		}
+
+		shared_memory = (char*)shmat(segment_id, NULL, 0);
+
+		if (shared_memory < (char*)0) {
+			//throw("Could not attach segment");
+			fprintf(stderr, "[Error@%s] can not attach segment\n", __func__);
+			return -1;
+		}
+		//*((int *)shared_memory) = 0xbeef;
+		shared_memory[length] = '\0';
+
+	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
+	return length;
 }
 /*===================End of Global FIFO */
 

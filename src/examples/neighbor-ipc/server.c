@@ -49,7 +49,7 @@ void communicate(int fifo_self,
 		{
 			//int msg_len = 0;
 			//len = fifo_read(fifo_self, buffer, strlen(buffer));
-			len = fifo_read(fifo_self, buffer, 256);
+			len = global_fifo_read(fifo_self, buffer, 256);
 			fprintf(stderr, "[Server] Got Request: %s, len (%d)\n", buffer, len);
 			sscanf(buffer, FIFO_MSG_FORMAT, &client_id, func_name, &func_args1, &func_args2, &func_args3, &func_args4);
 			fprintf(stderr, "[Server] clientid:%d, func:%s\n", client_id, func_name);
@@ -121,16 +121,20 @@ int main(int argc, char* argv[]) {
 	struct sigaction signal_action;
 	int fifo_self;
 	int fifo_server;
+	int global_fifo;
 
 	//struct Arguments args;
 	//parse_arguments(&args, argc, argv);
 
-	setup_server_signals(&signal_action);
-	signal_register_server_handler();
+	//setup_server_signals(&signal_action);
+	//signal_register_server_handler();
 
 	fifo_self = fifo_init();
+	//Here, the getpid is the uuid used in local fifo
+	global_fifo = global_fifo_init(getpid());
 
-	communicate(fifo_self, NULL, &signal_action);
+	//communicate(fifo_self, NULL, &signal_action);
+	communicate(global_fifo, NULL, &signal_action);
 
 	fifo_finish(fifo_self);
 	fifo_clean();

@@ -8,6 +8,10 @@
 #include <global_syscall_protocol.h>
 #include <global_syscall_runtime.h>
 #include <global_syscall_interfaces.h>
+#include <sys/shm.h>
+#include <assert.h>
+
+#include <common/common.h>
 
 static int global_OS_id = -1;
 static int self_global_id = -1;
@@ -81,7 +85,41 @@ int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fi
 
 int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fifo_fd
 {
+	int ret;
+	char buffer[256];
+	/* Test of shm */
+		char* shared_memory;
+		// Key for the memory segment
+		key_t segment_key;
+		int segment_id;
+		int shm_uuid = 1;
+		char shmid_string[256];
+
+		sprintf(shmid_string, "%d", shm_uuid);
+
+		//segment_key = generate_key(itoa(shm_uuid));
+		segment_key = generate_key(shmid_string);
+		segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+		if (segment_id < 0) {
+			throw("Could not get segment");
+		}
+
+		shared_memory = (char*)shmat(segment_id, NULL, 0);
+
+		if (shared_memory < (char*)0) {
+			throw("Could not attach segment");
+		}
+		*((int *)shared_memory) = 0xbeef;
 	/* FIXME: we need a shm mechanism here */
+
+		assert(len<4096);
+
+		memcpy(shared_memory, buf, len);
+
+	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_WRITE", global_fifo, shm_uuid, len, 0);
+	ret = invoke_global_syscall(global_OS_id, buffer);
+
 	fprintf(stderr, "[%s] invoked\n", __func__);
 	return 0;
 }

@@ -157,8 +157,11 @@ int main(int argc, char *argv[]) {
 	//Here, the getpid is the uuid used in local fifo
 	global_fifo = global_fifo_init(getpid());
 
+
+
 //	fprintf(stderr, "[Client] Before fifo_connect\n");
-	fifo_server = fifo_connect(args.server_id);
+	//fifo_server = fifo_connect(args.server_id);
+	fifo_server = global_fifo_write(args.server_id, "hello,world", 10);
 
 	fprintf(stderr, "[Client] Ready to communicate with server:%d\n", args.server_id);
 	communicate(fifo_self, fifo_server, &args, &signal_action);
