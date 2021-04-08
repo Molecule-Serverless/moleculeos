@@ -8,7 +8,7 @@
 
 //#define SYSCALL_MSG_FORMAT "id: %d func:%s args1:%d args2:%d args3:%d args4:%d"
 
-int register_self_global(void); //return a global pid
+int register_self_global(int os_port); //return a global pid
 int unregister_self_global(void); //return a status code
 int global_fifo_init(int local_fifo); //return a global fifo_fd
 int global_fifo_close(int global_fifo); //close a global fifo_fd

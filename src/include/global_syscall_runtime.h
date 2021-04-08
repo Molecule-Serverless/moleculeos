@@ -24,7 +24,7 @@
 //#define SYSCALL_RSP_FORMAT "ret: %d"
 
 
-int connect_global_OS(void);
+int connect_global_OS(int os_port);
 
 int invoke_global_syscall(int global_os_fd, char * syscall);
 

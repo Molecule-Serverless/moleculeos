@@ -17,7 +17,7 @@
 
 #include <global_syscall_runtime.h>
 
-int connect_global_OS(void)
+int connect_global_OS(int os_port)
 {
 	int sockfd = 0;
 	struct sockaddr_in serv_addr;
@@ -31,7 +31,8 @@ int connect_global_OS(void)
 	memset(&serv_addr, '0', sizeof(serv_addr));
 
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(GLOBAL_OS_PORT);
+	//serv_addr.sin_port = htons(GLOBAL_OS_PORT);
+	serv_addr.sin_port = htons(os_port);
 #if 1
 	if(inet_pton(AF_INET, GLOBAL_OS_IP, &serv_addr.sin_addr)<=0)
 	{

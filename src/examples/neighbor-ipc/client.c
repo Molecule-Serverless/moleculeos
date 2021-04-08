@@ -9,6 +9,7 @@
 #include "common/common.h"
 #include <molecule-ipc.h>
 #include <global_syscall_interfaces.h>
+#include <global_syscall_protocol.h>
 
 //#define FIFO_PATH "/tmp/ipc_bench_fifo"
 
@@ -16,6 +17,7 @@ typedef struct Local_Arguments {
 	int size;
 	int count;
 	int server_id;
+	int os_port;
 } Local_Arguments;
 
 
@@ -110,6 +112,7 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 	// Default values
 	arguments->size = DEFAULT_MESSAGE_SIZE;
 	arguments->count = 1000;
+	arguments->os_port = GLOBAL_OS_PORT;
 
 	// Command line arguments
 	// clang-format off
@@ -117,18 +120,20 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 			{"size",  required_argument, NULL, 's'},
 			{"count", required_argument, NULL, 'c'},
 			{"server Id", required_argument, NULL, 'i'},
+			{"global os port", required_argument, NULL, 'p'},
 			{0,       0,                 0,     0}
 	};
 	// clang-format on
 
 	while (true) {
-		opt = getopt_long(argc, argv, "+:s:c:i:", long_options, &long_index);
+		opt = getopt_long(argc, argv, "+:s:c:i:p:", long_options, &long_index);
 
 		switch (opt) {
 			case -1: return;
 			case 's': arguments->size = atoi(optarg); break;
 			case 'c': arguments->count = atoi(optarg); break;
 			case 'i': arguments->server_id = atoi(optarg); break;
+			case 'p': arguments->os_port = atoi(optarg); break;
 			default: continue;
 		}
 	}
@@ -147,7 +152,7 @@ int main(int argc, char *argv[]) {
 	local_parse_arguments(&args, argc, argv);
 	//parse_arguments(&args, argc, argv);
 
-	register_self_global();
+	register_self_global(args.os_port);
 
 	//setup_client_signals(&signal_action);
 	//stream = open_fifo(&signal_action);

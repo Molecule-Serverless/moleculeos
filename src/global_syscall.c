@@ -25,6 +25,7 @@ global_fifo_t global_fifo_list[GLOBAL_FIFO_LIST_SIZE];
 static int global_fifo_now = 0;
 
 static int current_pu_id = -1;
+static int global_os_port = -1;
 
 /* syscall handlers list */
 int syscall_fifo_init(int local_uuid, int owner_pid);
@@ -47,7 +48,8 @@ int global_syscall_loop(void)
 
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(SERV_PORT);
+    //servaddr.sin_port = htons(SERV_PORT);
+    servaddr.sin_port = htons(global_os_port);
     bind(listenfd,(struct sockaddr*)&servaddr,sizeof(servaddr));
     listen(listenfd,20);
     efd = epoll_create(MAX_OPEN_FD);
@@ -146,7 +148,7 @@ int global_syscall_loop(void)
     return 0;
 }
 
-int global_os_init(void)
+int global_os_init(int pu_id, int os_port)
 {
 	int i;
 	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++)
@@ -157,7 +159,8 @@ int global_os_init(void)
 	}
 
 	//FIXME: different global-OS on different PU has different pu_id
-	current_pu_id = 0;
+	current_pu_id = pu_id;
+	global_os_port = os_port;
 	return 0;
 }
 

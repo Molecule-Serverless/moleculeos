@@ -19,14 +19,14 @@ static int self_global_id = -1;
 /*
  * It should be invoked before other global functions
  * */
-int register_self_global(void) //return a global pid
+int register_self_global(int os_port) //return a global pid
 {
 	char buffer[256];
 
 	fprintf(stderr, "[%s] invoked\n", __func__);
 
 	/* Note: we should only register once */
-	global_OS_id = connect_global_OS();
+	global_OS_id = connect_global_OS(os_port);
 
 	sprintf(buffer, SYSCALL_REQ_FORMAT, 0, "RegisterSelfGlobal", 0, 0, 0, 0);
 	self_global_id = invoke_global_syscall(global_OS_id, buffer);

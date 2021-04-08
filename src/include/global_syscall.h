@@ -11,7 +11,7 @@
 #include <global_syscall_protocol.h>
 
 int global_syscall_loop(void);
-int global_os_init(void);
+int global_os_init(int pu_id, int os_port);
 
 /* Structure of Permission containers */
 typedef struct perm_container{
