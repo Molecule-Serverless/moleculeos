@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
 	struct sigaction signal_action;
 	int fifo_self;
 	int fifo_server;
+	int global_fifo;
 
 	struct Local_Arguments args;
 	local_parse_arguments(&args, argc, argv);
@@ -151,8 +152,12 @@ int main(int argc, char *argv[]) {
 	//setup_client_signals(&signal_action);
 	//stream = open_fifo(&signal_action);
 	fprintf(stderr, "[Client] Before fifo_init\n");
+
 	fifo_self = fifo_init();
-	fprintf(stderr, "[Client] Before fifo_connect\n");
+	//Here, the getpid is the uuid used in local fifo
+	global_fifo = global_fifo_init(getpid());
+
+//	fprintf(stderr, "[Client] Before fifo_connect\n");
 	fifo_server = fifo_connect(args.server_id);
 
 	fprintf(stderr, "[Client] Ready to communicate with server:%d\n", args.server_id);

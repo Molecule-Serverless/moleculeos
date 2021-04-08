@@ -16,7 +16,7 @@
 int main(void)
 {
 	/* 1. Init global processes */
-	global_process_init();
+	global_os_init();
 
 
 	/* Loop1: wait for syscall events */

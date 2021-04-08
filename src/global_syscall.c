@@ -101,17 +101,17 @@ int global_syscall_loop(void)
 		    		fprintf(stderr, "[Error@%s] global process full\n", __func__);
 				ret = -1;
 			    }
-		    }else
+		    } else
 		    //FIFO_INIT
-		    if (strcmp(func_name, "FIFO_INIT")) {
+		    if (strcmp(func_name, "FIFO_INIT") == 0) {
 			ret = syscall_fifo_init(func_args1, func_args2);
-		    }
+		    } else
 		    //FIFO_READ
-		    if (strcmp(func_name, "FIFO_READ")) {
+		    if (strcmp(func_name, "FIFO_READ") == 0) {
 			ret = syscall_fifo_read(func_args1, func_args2, func_args3);
-		    }
+		    } else
 		    //FIFO_WRITE
-		    if (strcmp(func_name, "FIFO_WRITE")) {
+		    if (strcmp(func_name, "FIFO_WRITE") == 0) {
 			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
 		    }
 		    //Default
@@ -170,14 +170,17 @@ int syscall_fifo_init(int local_uuid, int owner_pid)
 
 	if (global_fifo_list[global_fifo_now].pu_id == -1){
 		//find an empty entry
+		struct perm_container perm = {0x3, owner_pid};
 		global_fifo_list[global_fifo_now].pu_id = current_pu_id;
 		global_fifo_list[global_fifo_now].global_id = global_fifo_now;
 		ret = global_process_now;
 
 
+
 		global_fifo_list[global_fifo_now].local_uuid = local_uuid;
 		global_fifo_list[global_fifo_now].owner_pid = owner_pid;
-		global_fifo_list[global_fifo_now].perms = {0x3, owner_pid};
+		//global_fifo_list[global_fifo_now].perms = {0x3, owner_pid};
+		global_fifo_list[global_fifo_now].perms = perm;
 
 	}else{
 		//FIXME: here, we do not fully use the space of the list
