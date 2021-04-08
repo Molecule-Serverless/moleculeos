@@ -21,13 +21,13 @@ static int global_process_now = 0;
 global_fifo_t global_fifo_list[GLOBAL_FIFO_LIST_SIZE];
 static int global_fifo_now = 0;
 
+static int current_pu_id = -1;
+
 /* syscall handlers list */
-
-
-int syscall_fifo_init(int local_fifo);
+int syscall_fifo_init(int local_uuid, int owner_pid);
 int syscall_fifo_close(int global_fifo);
-int syscall_fifo_read(int global_fifo, char *buf, int length);
-int syscall_fifo_write(int global_fifo, char *buf, int length);
+int syscall_fifo_read(int global_fifo, int shmid, int length);
+int syscall_fifo_write(int global_fifo, int shmid, int length);
 
 //End of syscall handler list
 
@@ -89,6 +89,8 @@ int global_syscall_loop(void)
 
 		    fprintf(stderr, "[%s] after parse requests, func_name:%s\n", __func__, func_name);
 
+		    /*Handler dispatch */
+		    //RegisterSelfGlobal
 		    if (strcmp(func_name, "RegisterSelfGlobal") == 0) {
 			    global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
 			    if (!global_process_list[global_process_now]){
@@ -99,12 +101,29 @@ int global_syscall_loop(void)
 		    		fprintf(stderr, "[Error@%s] global process full\n", __func__);
 				ret = -1;
 			    }
-		    	fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
-		    }else{
+		    }else
+		    //FIFO_INIT
+		    if (strcmp(func_name, "FIFO_INIT")) {
+			ret = syscall_fifo_init(func_args1, func_args2);
+		    }
+		    //FIFO_READ
+		    if (strcmp(func_name, "FIFO_READ")) {
+			ret = syscall_fifo_read(func_args1, func_args2, func_args3);
+		    }
+		    //FIFO_WRITE
+		    if (strcmp(func_name, "FIFO_WRITE")) {
+			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
+		    }
+		    //Default
+		    else{
 			    //unsupported
-			    ret = -1;
+			ret = -1;
 		    	fprintf(stderr, "[%s] Global syscall(%s) unknown\n", __func__, func_name);
 		    }
+		    /* End of Handler dispatch */
+		   fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
+
+
 		    sprintf(sys_resp, SYSCALL_RSP_FORMAT, ret);
 
 		    write(connfd, sys_resp, strlen(sys_resp));
@@ -132,6 +151,9 @@ int global_os_init(void)
 		//we use pu_id to indicate whether this is a valid fifo
 		global_fifo_list[i].pu_id = -1;
 	}
+
+	//FIXME: different global-OS on different PU has different pu_id
+	current_pu_id = 0;
 	return 0;
 }
 
@@ -140,10 +162,51 @@ int global_os_init(void)
 
 
 /*===================Begin of Global FIFO */
-int syscall_fifo_init(int local_fifo)
-int syscall_fifo_close(int global_fifo);
-int syscall_fifo_read(int global_fifo, char *buf, int length);
-int syscall_fifo_write(int global_fifo, char *buf, int length);
+int syscall_fifo_init(int local_uuid, int owner_pid)
+{
+	int ret;
+
+	global_fifo_now = (global_fifo_now+1) % GLOBAL_FIFO_LIST_SIZE;
+
+	if (global_fifo_list[global_fifo_now].pu_id == -1){
+		//find an empty entry
+		global_fifo_list[global_fifo_now].pu_id = current_pu_id;
+		global_fifo_list[global_fifo_now].global_id = global_fifo_now;
+		ret = global_process_now;
+
+
+		global_fifo_list[global_fifo_now].local_uuid = local_uuid;
+		global_fifo_list[global_fifo_now].owner_pid = owner_pid;
+		global_fifo_list[global_fifo_now].perms = {0x3, owner_pid};
+
+	}else{
+		//FIXME: here, we do not fully use the space of the list
+	    	fprintf(stderr, "[Error@%s] global fifo full\n", __func__);
+		ret = -1;
+	}
+
+    	//fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
+
+	return ret;
+}
+
+int syscall_fifo_close(int global_fifo)
+{
+	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	return 0;
+}
+
+int syscall_fifo_read(int global_fifo, int shmid, int length)
+{
+	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	return 0;
+}
+
+int syscall_fifo_write(int global_fifo, int shmid, int length)
+{
+	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	return 0;
+}
 /*===================End of Global FIFO */
 
 
