@@ -210,34 +210,34 @@ int syscall_fifo_read(int global_fifo, int shmid, int length)
 int syscall_fifo_write(int global_fifo, int shmid, int length)
 {
 	/* Test of shm */
-		char* shared_memory;
-		// Key for the memory segment
-		key_t segment_key;
-		int segment_id;
-		int shm_uuid = 1;
-		char shmid_string[256];
+	char* shared_memory;
+	// Key for the memory segment
+	key_t segment_key;
+	int segment_id;
+	int shm_uuid = 1;
+	char shmid_string[256];
 
-		sprintf(shmid_string, "%d", shmid);
+	sprintf(shmid_string, "%d", shmid);
 
-		//segment_key = ftok(itoa(shmid), 'X');
-		segment_key = ftok(shmid_string, 'X');
-		segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+	//segment_key = ftok(itoa(shmid), 'X');
+	segment_key = ftok(shmid_string, 'X');
+	segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
 
-		if (segment_id < 0) {
-			//throw("Could not get segment");
-			fprintf(stderr, "[Error@%s] can not get segment\n", __func__);
-			return -1;
-		}
+	if (segment_id < 0) {
+		//throw("Could not get segment");
+		fprintf(stderr, "[Error@%s] can not get segment\n", __func__);
+		return -1;
+	}
 
-		shared_memory = (char*)shmat(segment_id, NULL, 0);
+	shared_memory = (char*)shmat(segment_id, NULL, 0);
 
-		if (shared_memory < (char*)0) {
-			//throw("Could not attach segment");
-			fprintf(stderr, "[Error@%s] can not attach segment\n", __func__);
-			return -1;
-		}
-		//*((int *)shared_memory) = 0xbeef;
-		shared_memory[length] = '\0';
+	if (shared_memory < (char*)0) {
+		//throw("Could not attach segment");
+		fprintf(stderr, "[Error@%s] can not attach segment\n", __func__);
+		return -1;
+	}
+	//*((int *)shared_memory) = 0xbeef;
+	shared_memory[length] = '\0';
 
 	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
 	fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
