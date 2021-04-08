@@ -60,9 +60,10 @@ int global_syscall_loop(void)
 
     for (;;)
     {
+	int i;
         size_t nready = epoll_wait(efd,ep,MAX_OPEN_FD,-1);
         //printf("nready = %ld\n", nready);
-        for (int i = 0; i < nready; ++i)
+        for (i = 0; i < nready; ++i)
         {
             if (ep[i].data.fd == listenfd){
                 connfd = accept(listenfd,(struct sockaddr*)&cliaddr,&clilen);

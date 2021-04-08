@@ -2,8 +2,8 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/time.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "common/arguments.h"
 #include "common/benchmarks.h"
@@ -12,10 +12,12 @@ bench_t now() {
 #ifdef __MACH__
 	return ((double)clock()) / CLOCKS_PER_SEC * 1e9;
 #else
-	struct timespec ts;
-	timespec_get(&ts, TIME_UTC);
-
-	return ts.tv_sec * 1e9 + ts.tv_nsec;
+//	struct timespec ts;
+//	timespec_get(&ts, TIME_UTC);
+//
+//	return ts.tv_sec * 1e9 + ts.tv_nsec;
+	return 0;
+	
 
 #endif
 }
