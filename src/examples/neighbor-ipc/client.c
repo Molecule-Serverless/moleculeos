@@ -163,12 +163,14 @@ int main(int argc, char *argv[]) {
 	//fifo_server = fifo_connect(args.server_id);
 	fifo_server = global_fifo_write(args.server_id, "hello,world", 10);
 
+#if 0
 	fprintf(stderr, "[Client] Ready to communicate with server:%d\n", args.server_id);
 	communicate(fifo_self, fifo_server, &args, &signal_action);
 
 	fifo_finish(fifo_server);
 	fifo_finish(fifo_self);
 	fifo_clean();
+#endif
 
 	return EXIT_SUCCESS;
 }

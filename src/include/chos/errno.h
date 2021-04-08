@@ -145,8 +145,12 @@
 #define ENOMAPPING      203     /* No memory mapping in pgtbl */
 #define ESIGBUS         204     /* Bus error */
 
-#define EMAX            205
 
+/* MoleculeOS specific */
+#define EFIFOLOCAL      205     /* Try OPs locally */
+
+
+#define EMAX            206
 
 #define ERR_PTR(x) ((void *)(s64)(x))
 #define PTR_ERR(x) ((long)(x))

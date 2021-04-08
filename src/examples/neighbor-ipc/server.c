@@ -8,6 +8,7 @@
 
 #include "common/common.h"
 #include <molecule-ipc.h>
+#include <chos/errno.h>
 
 //#define FIFO_PATH "/tmp/ipc_bench_fifo"
 
@@ -122,22 +123,36 @@ int main(int argc, char* argv[]) {
 	int fifo_self;
 	int fifo_server;
 	int global_fifo;
+	int ret;
+	char* buffer = (char*)malloc(256);
 
 	//struct Arguments args;
 	//parse_arguments(&args, argc, argv);
 
 	//setup_server_signals(&signal_action);
 	//signal_register_server_handler();
+	register_self_global();
 
 	fifo_self = fifo_init();
 	//Here, the getpid is the uuid used in local fifo
 	global_fifo = global_fifo_init(getpid());
+
+	fprintf(stderr, "Server global fifo:%d\n", global_fifo);
+	ret = global_fifo_read(global_fifo);
+
+	if (ret == -EFIFOLOCAL){
+	//	fifo_read(fifo_self);
+		ret = fifo_read(fifo_self, buffer, 256);
+	}
+
+#if 0
 
 	//communicate(fifo_self, NULL, &signal_action);
 	communicate(global_fifo, NULL, &signal_action);
 
 	fifo_finish(fifo_self);
 	fifo_clean();
+#endif
 
 	return EXIT_SUCCESS;
 }

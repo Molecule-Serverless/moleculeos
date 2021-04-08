@@ -9,6 +9,7 @@
 
 #include <global_syscall_protocol.h>
 #include <global_syscall.h>
+#include <chos/errno.h>
 
 #define MAXLEN 1024
 #define SERV_PORT 0xfeeb //The reverse of 0xbeef
@@ -204,7 +205,11 @@ int syscall_fifo_close(int global_fifo)
 int syscall_fifo_read(int global_fifo, int shmid, int length)
 {
 	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
-	return 0;
+
+
+	//let the process read it locally
+	return -EFIFOLOCAL;
+	//return 0;
 }
 
 int syscall_fifo_write(int global_fifo, int shmid, int length)
@@ -239,8 +244,24 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	//*((int *)shared_memory) = 0xbeef;
 	shared_memory[length] = '\0';
 
+	/* TODO: Check whether the syscall can finished locally */
+
+	/* Write data locally */
+	//1. write fifo
+	{
+		int local_uuid = -1;
+		int local_fifo;
+		//TODO: check global_fifo to avoid attacks
+		local_uuid = global_fifo_list[global_fifo].local_uuid;
+		local_fifo = fifo_connect(local_uuid);
+		fifo_write(local_fifo, (char*)shared_memory, length);
+	}
+
+
+	//2. check pengding and wakeup thems (?)
+
 	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
-	fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
+	//fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
 	return length;
 }
 /*===================End of Global FIFO */
