@@ -78,13 +78,35 @@ int global_fifo_close(int global_fifo) //close a global fifo_fd
 
 int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fifo_fd
 {
+	int ret;
+	char buffer[256];
+	char* shared_memory;
+	key_t segment_key;
+	int segment_id;
+	int shm_uuid = 1;
+	char shmid_string[256];
+
+	sprintf(shmid_string, "%d", shm_uuid);
+	segment_key = generate_key(shmid_string);
+	segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+	if (segment_id < 0) {
+		throw("Could not get segment");
+	}
+
+	shared_memory = (char*)shmat(segment_id, NULL, 0);
+
+	if (shared_memory < (char*)0) {
+		throw("Could not attach segment");
+	}
+	*((int *)shared_memory) = 0xbeef;
+
 	/* FIXME: we need a shm mechanism here */
 	fprintf(stderr, "[%s] invoked\n", __func__);
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_READ", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
-	return 0;
-	return 0;
+	return ret;
 }
 
 int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fifo_fd
@@ -125,7 +147,7 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
 	fprintf(stderr, "[%s] invoked\n", __func__);
-	return 0;
+	return ret;
 }
 
 int global_grant_perm(int global_pid, int global_fd, int perm) //grant perm of a fifo to another process
