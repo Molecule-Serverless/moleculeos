@@ -14,7 +14,7 @@ SYSCALL_RUNTIME_LIB_SOURCES = global_syscall_interfaces.c global_syscall_runtime
 
 All: molecule-rdma
 
-globalos: global_syscall.c
+moleculeos: moleculeos.c global_syscall.c
 	gcc -o $@ $^ -Iinclude
 
 molecule-rdma: molecule-rdma.c $(RDMA_LIB_SOURCES)

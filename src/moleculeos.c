@@ -11,7 +11,15 @@
 #include <malloc.h>
 #endif
 
+#include <global_syscall.h>
+
 int main(void)
 {
-	return 0;
+	/* 1. Init global processes */
+	global_process_init();
+
+
+	/* Loop1: wait for syscall events */
+	return global_syscall_loop();
+//	return 0;
 }

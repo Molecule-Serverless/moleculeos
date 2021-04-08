@@ -6,6 +6,7 @@
 #include<string.h>
 
 #include <global_syscall_protocol.h>
+#include <global_syscall.h>
 
 #define MAXLEN 1024
 #define SERV_PORT 0xfeeb //The reverse of 0xbeef
@@ -13,8 +14,22 @@
 
 /* Global Process Table */
 #define GLOBAL_PROCESS_LIST_SIZE 4096
-int global_process[GLOBAL_PROCESS_LIST_SIZE];
+int global_process_list[GLOBAL_PROCESS_LIST_SIZE];
 static int global_process_now = 0;
+
+#define GLOBAL_FIFO_LIST_SIZE 4096
+global_fifo_t global_fifo_list[GLOBAL_FIFO_LIST_SIZE];
+static int global_fifo_now = 0;
+
+/* syscall handlers list */
+
+
+int syscall_fifo_init(int local_fifo);
+int syscall_fifo_close(int global_fifo);
+int syscall_fifo_read(int global_fifo, char *buf, int length);
+int syscall_fifo_write(int global_fifo, char *buf, int length);
+
+//End of syscall handler list
 
 int global_syscall_loop(void)
 {
@@ -76,9 +91,13 @@ int global_syscall_loop(void)
 
 		    if (strcmp(func_name, "RegisterSelfGlobal") == 0) {
 			    global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
-			    if (!global_process[global_process_now]){
-			    	global_process[global_process_now] = 1;
+			    if (!global_process_list[global_process_now]){
+			    	global_process_list[global_process_now] = 1;
 				ret = global_process_now;
+			    }else{
+				//FIXME: here, we do not fully use the space of the process_list
+		    		fprintf(stderr, "[Error@%s] global process full\n", __func__);
+				ret = -1;
 			    }
 		    	fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
 		    }else{
@@ -104,8 +123,33 @@ int global_syscall_loop(void)
     return 0;
 }
 
-#define DEBUG 1
-#if DEBUG //for debug
+int global_os_init(void)
+{
+	int i;
+	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++)
+		global_process_list[i] = 0;
+	for (i=0; i<GLOBAL_FIFO_LIST_SIZE; i++) {
+		//we use pu_id to indicate whether this is a valid fifo
+		global_fifo_list[i].pu_id = -1;
+	}
+	return 0;
+}
+
+/*===================Begin of Global Process */
+/*===================End of Global Process */
+
+
+/*===================Begin of Global FIFO */
+int syscall_fifo_init(int local_fifo)
+int syscall_fifo_close(int global_fifo);
+int syscall_fifo_read(int global_fifo, char *buf, int length);
+int syscall_fifo_write(int global_fifo, char *buf, int length);
+/*===================End of Global FIFO */
+
+
+
+
+#if 0 //for debug
 int main(void)
 {
 
