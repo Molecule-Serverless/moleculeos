@@ -22,6 +22,9 @@
 typedef struct Local_Arguments {
 	int pu_id; //the pu_id of this pu
 	int os_port; //the port of this global OS
+#ifdef SMARTC
+	char dsm_master_addr[48]; //the addr of dsm master
+#endif
 } Local_Arguments;
 
 void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
@@ -37,41 +40,64 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 	// Default values
 	arguments->pu_id = -1;
 	arguments->os_port = GLOBAL_OS_PORT; //default one
+#ifdef SMARTC
+	memset(arguments->dsm_master_addr, '\0', 48);
+	memcpy(arguments->dsm_master_addr, "127.0.0.1", 9) ; //default one
+	//fprintf(stderr, "debug: %s\n",arguments->dsm_master_addr);
+#endif
 
 	// Command line arguments
 	// clang-format off
 	static struct option long_options[] = {
 			{"pu id",  required_argument, NULL, 'i'},
 			{"os port", required_argument, NULL, 'p'},
+#ifdef SMARTC
+			{"dsm master addr", required_argument, NULL, 'd'},
+#endif
 			{0,       0,                 0,     0}
 	};
 	while (1) {
+#ifdef SMARTC
+		opt = getopt_long(argc, argv, "+:i:p:d:", long_options, &long_index);
+#else
 		opt = getopt_long(argc, argv, "+:i:p:", long_options, &long_index);
+#endif
 
 		switch (opt) {
 			case -1: return;
 			case 'i': arguments->pu_id = atoi(optarg); break;
 			case 'p': arguments->os_port = atoi(optarg); break;
+#ifdef SMARTC
+			case 'd': memcpy(arguments->dsm_master_addr, optarg, strlen(optarg)); break;
+#endif
 			default: continue;
 		}
 	}
+#ifdef SMARTC
+	fprintf(stderr, "debug: %s\n",arguments->dsm_master_addr);
+#endif
 }
 
 #ifdef SMARTC
 /* 
  * The entrypoint of the globalOS DSM layer, which handles requests from remote globalOS
  * */
+
+char dsm_master_addr[48]; //the addr of dsm master
 void * globalOS_DSM(void)
 {
 	int pu_id = get_current_pu_id();
         printf("[MoleculeOS] DSM layer started\n");
 	if (pu_id == 0){
 		// This is the main globalOS (working as server)
+        	fprintf(stderr, "[MoleculeOS] I am master\n");
 		molecule_dsm_init(NULL);
 	}
 	else{
 		//FIXME: how should we know the addr of server? 
-		molecule_dsm_init("127.0.0.1");
+		//molecule_dsm_init("127.0.0.1");
+        	fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
+		molecule_dsm_init(dsm_master_addr);
 	}
 
 	while (1){
@@ -94,6 +120,10 @@ int main(int argc, char *argv[])
 	global_os_init(args.pu_id, args.os_port);
 
 #ifdef SMARTC
+	memset(dsm_master_addr, '\0', 48);
+	memcpy(dsm_master_addr, args.dsm_master_addr, strlen(args.dsm_master_addr));
+
+	//fprintf(stderr, "debug: %s\n", args.dsm_master_addr);
 	ret = pthread_create(&DSM_thread, NULL, (void*)globalOS_DSM, NULL);
 	if (ret){
 	        fprintf(stderr, "Create pthread error!/n");
