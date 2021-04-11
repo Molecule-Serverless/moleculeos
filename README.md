@@ -7,7 +7,7 @@ This is the globalOS of Molecule (or MoleculeOS).
 
 MoleculeOS now provides:
 - IPC (cross-device IPC, based on RDMA)
-- cfork (@lqy)
+- Vector Cgroups
 
 
 ### Build
