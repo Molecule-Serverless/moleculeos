@@ -9,3 +9,7 @@ example-neighboripc-server
 global_syscall
 globalos
 moleculeos
+*.o
+*.a
+.*.d
+.*.cmd
