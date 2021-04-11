@@ -212,6 +212,100 @@ err:
     return ret;
 }
 
+/*
+ * Molecule Global States for Comm.
+ * */
+ucp_ep_h remote_ep;
+ucp_worker_h molecule_ucp_worker;
+
+/*
+ * Molecule_send_msg
+ * */
+int molecule_send_msg(char* msg_buf, int len)
+{
+    struct msg *msg             = NULL;
+    struct ucx_context *request = NULL;
+    size_t msg_len              = 0;
+    ucp_request_param_t send_param;
+    ucp_tag_recv_info_t info_tag;
+    ucp_tag_message_h msg_tag;
+    ucs_status_t status;
+    int ret = 0;
+
+    /* Prepare Msg */
+    msg_len = sizeof(*msg) + len;
+    msg = mem_type_malloc(msg_len);
+    mem_type_memset(msg, 0, msg_len);
+    set_msg_data_len(msg, msg_len - sizeof(*msg));
+    memcpy(msg + 1, msg_buf, len);
+
+    /* Prepare send_param */
+    send_param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK  |
+                              UCP_OP_ATTR_FIELD_USER_DATA |
+                              UCP_OP_ATTR_FIELD_MEMORY_TYPE;
+
+    send_param.cb.send      = send_handler;
+    send_param.user_data    = (void*)data_msg_str;
+    send_param.memory_type  = test_mem_type;
+
+    request                 = ucp_tag_send_nbx(remote_ep, msg, msg_len, tag,
+                                               &send_param);
+
+    status                  = ucx_wait(molecule_ucp_worker, request, "send",
+                                       data_msg_str);
+    if (status != UCS_OK) {
+	    fprintf(stderr, "[MoleculeOS@%s], send_msg error\n", __func__);
+	    ret = -1;
+    }
+
+
+    return ret;
+}
+
+int molecule_recv_msg(char * msg_buf, int len){
+    struct msg *msg             = NULL;
+    struct ucx_context *request = NULL;
+    size_t msg_len              = 0;
+    ucp_request_param_t send_param;
+    ucp_tag_recv_info_t info_tag;
+    ucp_tag_message_h msg_tag;
+    ucs_status_t status;
+    int ret = 0;
+
+    do {
+        /* Progressing before probe to update the state */
+        ucp_worker_progress(molecule_ucp_worker);
+
+        /* Probing incoming events in non-block mode */
+        msg_tag = ucp_tag_probe_nb(molecule_ucp_worker, tag, tag_mask, 1, &info_tag);
+    } while (msg_tag == NULL);
+
+    msg = malloc(info_tag.length);
+
+    request = ucp_tag_msg_recv_nb(molecule_ucp_worker, msg, info_tag.length,
+                                  ucp_dt_make_contig(1), msg_tag, recv_handler);
+    status  = ucx_wait(molecule_ucp_worker, request, "receive", data_msg_str);
+    if (status != UCS_OK) {
+        free(msg);
+        ret = -1;
+	goto err;
+    }
+
+    msg_len = msg->data_len;
+    if (len<msg_len){
+    	fprintf(stderr, "[Molecule@%s] buf len too small\n", __func__);
+	ret = -1;
+    	free(msg);
+	goto err;
+    }
+
+    memcpy(msg_buf, msg + 1, msg_len);
+
+    free(msg);
+err:
+    return ret;
+}
+
 static int run_ucx_client(ucp_worker_h ucp_worker)
 {
     struct msg *msg = NULL;
@@ -225,6 +319,7 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
     ucp_ep_params_t ep_params;
     struct ucx_context *request;
     char *str;
+    int i;
 
     /* Send client UCX address to server */
     ep_params.field_mask      = UCP_EP_PARAM_FIELD_REMOTE_ADDRESS |
@@ -328,6 +423,23 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
     }
 
     mem_type_free(msg);
+
+    /* Molecule-DSM: init global variables here: */
+    molecule_ucp_worker = ucp_worker;
+    remote_ep = server_ep;
+    sleep(1);
+    for (i=0; i<5; i++){
+    	molecule_send_msg("hello,world\n", 12);
+	sleep(1);
+    }
+    while (1) {
+	    //char dsm_call_buf[512];
+	    //molecule_recv_msg(dsm_call_buf, 512);
+	    //fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
+	//		    __func__, dsm_call_buf);
+	    sleep(1);
+    }
+
 
     ret = 0;
 
@@ -490,6 +602,16 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
     printf("flush_ep completed with status %d (%s)\n",
            status, ucs_status_string(status));
 
+    /* Molecule-DSM: init global variables here: */
+    molecule_ucp_worker = ucp_worker;
+    remote_ep = client_ep;
+    while (1) {
+	    char dsm_call_buf[512];
+	    molecule_recv_msg(dsm_call_buf, 512);
+	    fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
+			    __func__, dsm_call_buf);
+    }
+
     ret = 0;
 
 err_free_mem_type_msg:
@@ -500,7 +622,12 @@ err:
     return ret;
 }
 
-static int run_test(const char *client_target_name, ucp_worker_h ucp_worker)
+//static int run_test(const char *client_target_name, ucp_worker_h ucp_worker)
+/*
+ * Both client and server side will not return from this function
+ * So, dsm_main should run in a dedicated thread
+ * */
+static int dsm_main(const char *client_target_name, ucp_worker_h ucp_worker)
 {
     if (client_target_name != NULL) {
         return run_ucx_client(ucp_worker);
@@ -605,7 +732,7 @@ int molecule_dsm_init(char *client_target_name)
                            err_peer_addr, ret);
     }
 
-    ret = run_test(client_target_name, ucp_worker);
+    ret = dsm_main(client_target_name, ucp_worker);
 
     if (!ret && (err_handling_opt.failure_mode != FAILURE_MODE_NONE)) {
         /* Make sure remote is disconnected before destroying local worker */
