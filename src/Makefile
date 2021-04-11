@@ -12,6 +12,9 @@ RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 LOCAL_IPC_LIB_SOURCES = $(addprefix local-ipc/, $(LOCAL_IPC_LIB_SOURCES_files))
 SYSCALL_RUNTIME_LIB_SOURCES = global_syscall_interfaces.c global_syscall_runtime.c
 
+UCX_LIB?=../../ucx/build/lib/
+UCX_INCLUDE?=../../ucx/build/include/
+
 All: moleculeos
 
 ## A Local Development Version of MoleculeOS
@@ -20,7 +23,8 @@ moleculeos: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 
 ## A Dist Version of MoleculeOS, it's based on DSM to communicate with other PUs
 moleculeos-dist: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
-	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -lm -lpthread -DSMARTC
+	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC
+	@echo build $@ successfully, please set LD_LIBRARY_PATH, e.g., export LD_LIBRARY_PATH=$(UCX_LIB) before you run
 
 molecule-rdma: molecule-rdma.c $(RDMA_LIB_SOURCES)
 	gcc -o $@ $^ -Irdma-lib/ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE
