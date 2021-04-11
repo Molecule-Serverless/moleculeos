@@ -41,7 +41,13 @@ example-ipc: example-ipc-client example-ipc-server
 	@echo build example/ipc success
 
 example-neighbor-ipc: example-neighboripc-client example-neighboripc-server
-	@echo build example/ipc success
+	@echo build example/neightbor-ipc success
+	@echo To run the demo:
+	@echo Start globalOS: ./moleculeos -i 0
+	@echo ./example-neighboripc-server
+	@echo Read the Server global fifo value, e.g.,1
+	@echo ./example-neighboripc-client -i server_global_fifo_value
+
 
 example-ipc-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
