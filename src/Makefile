@@ -7,6 +7,7 @@ common/signals.c \
 common/sockets.c \
 common/utility.c 
 
+DSM_SOURCES_files= inter-device/molecule_dsm.c
 
 RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 LOCAL_IPC_LIB_SOURCES = $(addprefix local-ipc/, $(LOCAL_IPC_LIB_SOURCES_files))
@@ -22,7 +23,7 @@ moleculeos: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -lm -lpthread
 
 ## A Dist Version of MoleculeOS, it's based on DSM to communicate with other PUs
-moleculeos-dist: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+moleculeos-dist: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(DSM_SOURCES_files)
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC
 	@echo build $@ successfully, please set LD_LIBRARY_PATH, e.g., export LD_LIBRARY_PATH=$(UCX_LIB) before you run
 

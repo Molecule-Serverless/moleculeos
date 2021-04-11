@@ -12,6 +12,7 @@
 
 int global_syscall_loop(void);
 int global_os_init(int pu_id, int os_port);
+int get_current_pu_id(void);
 
 /* Structure of Permission containers */
 typedef struct perm_container{

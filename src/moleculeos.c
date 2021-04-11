@@ -14,6 +14,9 @@
 
 #include <pthread.h>
 
+#ifdef SMARTC
+#include <molecule_dsm.h>
+#endif
 #include <global_syscall.h>
 
 typedef struct Local_Arguments {
@@ -54,16 +57,28 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 	}
 }
 
+#ifdef SMARTC
 /* 
  * The entrypoint of the globalOS DSM layer, which handles requests from remote globalOS
  * */
 void * globalOS_DSM(void)
 {
+	int pu_id = get_current_pu_id();
         printf("[MoleculeOS] DSM layer started\n");
+	if (pu_id == 0){
+		// This is the main globalOS (working as server)
+		molecule_dsm_init(NULL);
+	}
+	else{
+		//FIXME: how should we know the addr of server? 
+		molecule_dsm_init("127.0.0.1");
+	}
+
 	while (1){
 	    sleep(1);
 	}
 }
+#endif
 
 int main(int argc, char *argv[])
 {

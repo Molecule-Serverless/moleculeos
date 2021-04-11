@@ -167,6 +167,10 @@ int global_os_init(int pu_id, int os_port)
 	return 0;
 }
 
+int get_current_pu_id(void){
+	return current_pu_id;
+}
+
 /*===================Begin of Global Process */
 /*===================End of Global Process */
 

@@ -33,7 +33,8 @@
  *    Sergey Shalnov <sergeysh@mellanox.com> 7-June-2016
  */
 
-#include "hello_world_util.h"
+#include "dsm_util.h"
+#include <molecule_dsm.h>
 
 #include <ucp/api/ucp.h>
 
@@ -508,6 +509,127 @@ static int run_test(const char *client_target_name, ucp_worker_h ucp_worker)
     }
 }
 
+
+/*
+ * Input: client_target_name
+ * 	NULL: this is the server side
+ * 	Addr: this is the client side, and the value is server's addr
+ * */
+int molecule_dsm_init(char *client_target_name)
+{
+    /* UCP temporary vars */
+    ucp_params_t ucp_params;
+    ucp_worker_params_t worker_params;
+    ucp_config_t *config;
+    ucs_status_t status;
+
+    /* UCP handler objects */
+    ucp_context_h ucp_context;
+    ucp_worker_h ucp_worker;
+
+    /* OOB connection vars */
+    uint64_t addr_len = 0;
+    //char *client_target_name = NULL;
+    int oob_sock = -1;
+    int ret = -1;
+
+    memset(&ucp_params, 0, sizeof(ucp_params));
+    memset(&worker_params, 0, sizeof(worker_params));
+
+    /* Parse the command line */
+    //status = parse_cmd(argc, argv, &client_target_name);
+    //CHKERR_JUMP(status != UCS_OK, "parse_cmd\n", err);
+
+    /* UCP initialization */
+    status = ucp_config_read(NULL, NULL, &config);
+    CHKERR_JUMP(status != UCS_OK, "ucp_config_read\n", err);
+
+    ucp_params.field_mask   = UCP_PARAM_FIELD_FEATURES |
+                              UCP_PARAM_FIELD_REQUEST_SIZE |
+                              UCP_PARAM_FIELD_REQUEST_INIT;
+    ucp_params.features     = UCP_FEATURE_TAG;
+    if (ucp_test_mode == TEST_MODE_WAIT || ucp_test_mode == TEST_MODE_EVENTFD) {
+        ucp_params.features |= UCP_FEATURE_WAKEUP;
+    }
+    ucp_params.request_size    = sizeof(struct ucx_context);
+    ucp_params.request_init    = request_init;
+
+    status = ucp_init(&ucp_params, config, &ucp_context);
+
+    ucp_config_print(config, stdout, NULL, UCS_CONFIG_PRINT_CONFIG);
+
+    ucp_config_release(config);
+    CHKERR_JUMP(status != UCS_OK, "ucp_init\n", err);
+
+    worker_params.field_mask  = UCP_WORKER_PARAM_FIELD_THREAD_MODE;
+    worker_params.thread_mode = UCS_THREAD_MODE_SINGLE;
+
+    status = ucp_worker_create(ucp_context, &worker_params, &ucp_worker);
+    CHKERR_JUMP(status != UCS_OK, "ucp_worker_create\n", err_cleanup);
+
+    status = ucp_worker_get_address(ucp_worker, &local_addr, &local_addr_len);
+    CHKERR_JUMP(status != UCS_OK, "ucp_worker_get_address\n", err_worker);
+
+    printf("[0x%x] local address length: %lu\n",
+           (unsigned int)pthread_self(), local_addr_len);
+
+    /* connection establishment */
+    if (client_target_name) {
+        peer_addr_len = local_addr_len;
+
+        oob_sock = client_connect(client_target_name, server_port);
+        CHKERR_JUMP(oob_sock < 0, "client_connect\n", err_addr);
+
+        ret = recv(oob_sock, &addr_len, sizeof(addr_len), MSG_WAITALL);
+        CHKERR_JUMP_RETVAL(ret != (int)sizeof(addr_len),
+                           "receive address length\n", err_addr, ret);
+
+        peer_addr_len = addr_len;
+        peer_addr = malloc(peer_addr_len);
+        CHKERR_JUMP(!peer_addr, "allocate memory\n", err_addr);
+
+        ret = recv(oob_sock, peer_addr, peer_addr_len, MSG_WAITALL);
+        CHKERR_JUMP_RETVAL(ret != (int)peer_addr_len,
+                           "receive address\n", err_peer_addr, ret);
+    } else {
+        oob_sock = server_connect(server_port);
+        CHKERR_JUMP(oob_sock < 0, "server_connect\n", err_peer_addr);
+
+        addr_len = local_addr_len;
+        ret = send(oob_sock, &addr_len, sizeof(addr_len), 0);
+        CHKERR_JUMP_RETVAL(ret != (int)sizeof(addr_len),
+                           "send address length\n", err_peer_addr, ret);
+
+        ret = send(oob_sock, local_addr, local_addr_len, 0);
+        CHKERR_JUMP_RETVAL(ret != (int)local_addr_len, "send address\n",
+                           err_peer_addr, ret);
+    }
+
+    ret = run_test(client_target_name, ucp_worker);
+
+    if (!ret && (err_handling_opt.failure_mode != FAILURE_MODE_NONE)) {
+        /* Make sure remote is disconnected before destroying local worker */
+        ret = barrier(oob_sock);
+    }
+    close(oob_sock);
+
+err_peer_addr:
+    free(peer_addr);
+
+err_addr:
+    ucp_worker_release_address(ucp_worker, local_addr);
+
+err_worker:
+    ucp_worker_destroy(ucp_worker);
+
+err_cleanup:
+    ucp_cleanup(ucp_context);
+
+err:
+    return ret;
+}
+
+#if 0
 int main(int argc, char **argv)
 {
     /* UCP temporary vars */
@@ -621,6 +743,7 @@ err_cleanup:
 err:
     return ret;
 }
+#endif
 
 static void print_usage()
 {
