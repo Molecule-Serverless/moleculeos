@@ -12,6 +12,8 @@
 #include <malloc.h>
 #endif
 
+#include <pthread.h>
+
 #include <global_syscall.h>
 
 typedef struct Local_Arguments {
@@ -52,17 +54,44 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 	}
 }
 
+/* 
+ * The entrypoint of the globalOS DSM layer, which handles requests from remote globalOS
+ * */
+void * globalOS_DSM(void)
+{
+        printf("[MoleculeOS] DSM layer started\n");
+	while (1){
+	    sleep(1);
+	}
+}
 
 int main(int argc, char *argv[])
 {
 	struct Local_Arguments args;
+#ifdef SMARTC
+	pthread_t DSM_thread;
+	int ret;
+#endif
+
 	local_parse_arguments(&args, argc, argv);
 
 	/* 1. Init global processes */
 	global_os_init(args.pu_id, args.os_port);
 
+#ifdef SMARTC
+	ret = pthread_create(&DSM_thread, NULL, (void*)globalOS_DSM, NULL);
+	if (ret){
+	        fprintf(stderr, "Create pthread error!/n");
+		return 1;
+	}
+#endif
 
 	/* Loop1: wait for syscall events */
-	return global_syscall_loop();
-//	return 0;
+	global_syscall_loop();
+
+#ifdef SMARTC
+	pthread_join(DSM_thread, NULL);
+#endif
+
+	return 0;
 }

@@ -13,3 +13,4 @@ moleculeos
 *.a
 .*.d
 .*.cmd
+moleculeos-dist
