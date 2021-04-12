@@ -262,6 +262,7 @@ int syscall_fifo_read(int global_fifo, int shmid, int length)
 	return -EFIFOLOCAL;
 	//return 0;
 }
+#ifdef SMARTC
 int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 {
 //#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
@@ -277,6 +278,7 @@ int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 
 	return 0;
 }
+#endif
 int write_local_fifo(int global_fifo, char* shared_memory, int length)
 {
 	int local_uuid = -1;
@@ -319,11 +321,13 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	//*((int *)shared_memory) = 0xbeef;
 	shared_memory[length] = '\0';
 
-	/* TODO: Check whether the syscall can finished locally */
+	/* Check whether the syscall can finished locally */
+#ifdef SMARTC
 	if (!is_global_fifo_local(global_fifo)){
 		//remote case
 		return write_remote_fifo(global_fifo, (char*)shared_memory, length);
 	}
+#endif
 
 	/* Write data locally */
 	//1. write fifo
