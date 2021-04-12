@@ -99,12 +99,12 @@ int global_syscall_loop(void)
 		    char func_name[256];
 		    char sys_resp[256];
 		    int ret;
-		    fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
+		    //fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
 
 		    sscanf(buf, SYSCALL_REQ_FORMAT, &client_id, func_name, &func_args1,
 				    &func_args2, &func_args3, &func_args4);
 
-		    fprintf(stderr, "[%s] after parse requests, func_name:%s\n", __func__, func_name);
+		    //fprintf(stderr, "[%s] after parse requests, func_name:%s\n", __func__, func_name);
 
 		    /*Handler dispatch */
 		    //RegisterSelfGlobal
@@ -138,7 +138,7 @@ int global_syscall_loop(void)
 		    	fprintf(stderr, "[%s] Global syscall(%s) unknown\n", __func__, func_name);
 		    }
 		    /* End of Handler dispatch */
-		   fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
+		   //fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
 
 
 		    sprintf(sys_resp, SYSCALL_RSP_FORMAT, ret);
@@ -263,7 +263,9 @@ int syscall_fifo_connect(int global_fifo)
 
 int syscall_fifo_read(int global_fifo, int shmid, int length)
 {
+#ifdef DEBUG
 	fprintf(stderr, "[Info@%s] syscall invoked\n", __func__);
+#endif
 #ifdef SMARTC
 	if (!is_global_fifo_local(global_fifo)){
 		//remote case

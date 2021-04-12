@@ -122,7 +122,7 @@ int fifo_read(int fifo_fd, char* buf, int len){
 	assert(len<=MAX_MSG_LEN);
 
 	i = read(fifo_fd, buf, len);
-#if FIFO_DEBUG
+#ifdef FIFO_DEBUG
 	fprintf(stderr, "[%s] read content: %s, len(%d)\n", __func__, buf, i);
 #endif
 	return i;
@@ -133,11 +133,11 @@ int fifo_write(int fifo_fd, char*buf, int len){
 	assert(len>0);
 	assert(len<=MAX_MSG_LEN);
 
-#if FIFO_DEBUG
+#ifdef FIFO_DEBUG
 	fprintf(stderr, "[%s] write content: %s, len:%d\n", __func__, buf, len);
 #endif
 	i = write(fifo_fd, buf, len);
-#if FIFO_DEBUG
+#ifdef FIFO_DEBUG
 	fprintf(stderr, "[%s] writeen len:%d\n", __func__, i);
 #endif
 	return i;

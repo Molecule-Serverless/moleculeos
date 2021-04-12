@@ -137,9 +137,11 @@ static void recv_handler(void *request, ucs_status_t status,
 
     context->completed = 1;
 
+#ifdef MOLECULE_DEBUG
     printf("[0x%x] receive handler called with status %d (%s), length %lu\n",
            (unsigned int)pthread_self(), status, ucs_status_string(status),
            info->length);
+#endif
 }
 
 static ucs_status_t ucx_wait(ucp_worker_h ucp_worker, struct ucx_context *request,
@@ -165,7 +167,9 @@ static ucs_status_t ucx_wait(ucp_worker_h ucp_worker, struct ucx_context *reques
         fprintf(stderr, "unable to %s %s (%s)\n", op_str, data_str,
                 ucs_status_string(status));
     } else {
+#ifdef MOLECULE_DEBUG
         printf("finish to %s %s\n", op_str, data_str);
+#endif
     }
 
     return status;
@@ -631,8 +635,10 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
 	    char dsm_call_buf[4096];
 	    char dsm_resp_buf[4096];
 	    molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
+#ifdef DEBUG
 	    fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
 			    __func__, dsm_call_buf);
+#endif
 
 	    ret = dsm_handlers(dsm_call_buf, 4096);
 		

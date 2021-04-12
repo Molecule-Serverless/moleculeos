@@ -34,7 +34,9 @@ int dsm_handlers(char* dsm_call_buf, int len)
 	char sys_resp[256];
 	int ret;
 
+#ifdef DEBUG
 	fprintf(stderr, "[%s] DSM handlers invoked: %s\n", __func__, dsm_call_buf);
+#endif
 
 	ret = sscanf(dsm_call_buf, DSM_REQ_FORMAT_CALLEE, &client_id, func_name, &func_args1,
 			    &func_args2, &func_args3, &func_args4, &buf_len, &buf_offset);
@@ -43,8 +45,10 @@ int dsm_handlers(char* dsm_call_buf, int len)
 	assert(buf_offset + buf_len < len);
 
 	if (strcmp(func_name, "WRITEFIFO") == 0) {
+#ifdef DEBUG
 	   	fprintf(stderr, "[%s] func(%s) buf_len(%d) buf(%s)\n", __func__, func_name,
 				buf_len, dsm_call_buf+buf_offset);
+#endif
 		ret = write_local_fifo(func_args1, dsm_call_buf+buf_offset, buf_len);
 	}
 	else{
