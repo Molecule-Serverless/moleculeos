@@ -10,4 +10,8 @@
 #define SYSCALL_REQ_FORMAT "id: %d func:%s args1:%d args2:%d args3:%d args4:%d"
 #define SYSCALL_RSP_FORMAT "ret: %d"
 
+#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
+#define DSM_REQ_FORMAT_CALLEE "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d %n"
+#define DSM_RSP_FORMAT "ret: %d "
+
 #endif

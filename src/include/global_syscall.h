@@ -22,6 +22,7 @@ int get_current_pu_id(void);
 
 /* Global FIFO methods */
 int is_global_fifo_local(int global_fifo);
+int write_local_fifo(int global_fifo, char* shared_memory, int length);
 
 
 /* Structure of Permission containers */

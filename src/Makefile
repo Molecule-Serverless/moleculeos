@@ -7,7 +7,8 @@ common/signals.c \
 common/sockets.c \
 common/utility.c 
 
-DSM_SOURCES_files= inter-device/molecule_dsm.c
+DSM_SOURCES_files= inter-device/molecule_dsm.c\
+		   inter-device/dsm_handlers.c
 
 RDMA_LIB_SOURCES = $(addprefix rdma-lib/, $(RDMA_LIB_SOURCES_files))
 LOCAL_IPC_LIB_SOURCES = $(addprefix local-ipc/, $(LOCAL_IPC_LIB_SOURCES_files))

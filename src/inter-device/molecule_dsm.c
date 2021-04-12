@@ -35,6 +35,7 @@
 
 #include "dsm_util.h"
 #include <molecule_dsm.h>
+#include <global_syscall_protocol.h>
 
 #include <ucp/api/ucp.h>
 
@@ -431,6 +432,7 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
     molecule_client_ucp_worker = ucp_worker;
     molecule_client_remote_ep = server_ep;
     sleep(1);
+#if 0
     for (i=0; i<5; i++){
 	char dsm_resp_buf[512];
     	molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, "hello,world\n", 12);
@@ -439,6 +441,7 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
 			    __func__, dsm_resp_buf);
 	sleep(1);
     }
+#endif
     while (1) {
 	    //char dsm_call_buf[512];
 	    //molecule_recv_msg(dsm_call_buf, 512);
@@ -455,6 +458,18 @@ err_ep:
 
 err:
     return ret;
+}
+
+
+int dsm_call(char* buf, int len){
+	int ret;
+	char dsm_resp_buf[4096];
+    	molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, buf, len);
+	molecule_recv_msg(molecule_client_remote_ep, molecule_client_ucp_worker, dsm_resp_buf, 4096);
+	sscanf(dsm_resp_buf, DSM_RSP_FORMAT, &ret);
+	fprintf(stderr, "[MoleculeOS@%s] Recv DSM resp: %s\n",
+			    __func__, dsm_resp_buf);
+	return ret;
 }
 
 static void flush_callback(void *request, ucs_status_t status, void *user_data)
@@ -613,11 +628,18 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
     molecule_server_ucp_worker = ucp_worker;
     molecule_server_remote_ep = client_ep;
     while (1) {
-	    char dsm_call_buf[512];
-	    molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 512);
+	    char dsm_call_buf[4096];
+	    char dsm_resp_buf[4096];
+	    molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
 	    fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
 			    __func__, dsm_call_buf);
-    	    molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, "hello, Dd\n", 10);
+
+	    ret = dsm_handlers(dsm_call_buf, 4096);
+		
+	    sprintf(dsm_resp_buf, DSM_RSP_FORMAT, ret);
+
+    	    //molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, "hello, Dd\n", 10);
+    	    molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_resp_buf, 4096);
     }
 
     ret = 0;

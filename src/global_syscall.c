@@ -29,6 +29,7 @@
 int global_process_list[GLOBAL_PROCESS_LIST_SIZE];
 static int global_process_now = 0;
 
+#define LOCAL_FIFO_LIST_SIZE 512
 #define GLOBAL_FIFO_LIST_SIZE 4096
 global_fifo_t global_fifo_list[GLOBAL_FIFO_LIST_SIZE];
 static int global_fifo_now = 0;
@@ -171,6 +172,9 @@ int global_os_init(int pu_id, int os_port)
 	current_pu_id = pu_id;
 	global_os_port = os_port + pu_id; // we always use pu_id as an offset to change the port
 
+	global_fifo_now = current_pu_id * LOCAL_FIFO_LIST_SIZE;
+
+
 	fprintf(stderr, "MoleculeOS inited, PU_ID: %d, OS_port: %d\n",
 			current_pu_id, global_os_port);
 	return 0;
@@ -201,6 +205,14 @@ int check_global_fifo_bound(int global_fifo)
 int is_global_fifo_local(int global_fifo)
 {
 	check_global_fifo_bound(global_fifo);
+
+	/* Static partition global_fifo_id */
+	if (global_fifo<current_pu_id *LOCAL_FIFO_LIST_SIZE)
+		return 0;
+	if (global_fifo>= (current_pu_id+1) *LOCAL_FIFO_LIST_SIZE)
+		return 0;
+
+
 	return global_fifo_list[global_fifo].pu_id == current_pu_id;
 }
 
@@ -250,6 +262,30 @@ int syscall_fifo_read(int global_fifo, int shmid, int length)
 	return -EFIFOLOCAL;
 	//return 0;
 }
+int write_remote_fifo(int global_fifo, char* shared_memory, int length)
+{
+//#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
+//#define DSM_RSP_FORMAT "ret: %d"
+	char buffer[4096];
+	int ret;
+	ret = sprintf(buffer, DSM_REQ_FORMAT, 0, "WRITEFIFO", global_fifo, 0, 0, 0, length);
+	assert(ret+length<4096);
+	memcpy(buffer+ret, shared_memory, length);
+	buffer[ret+length] = '\0';
+
+	dsm_call(buffer, 4096);
+
+	return 0;
+}
+int write_local_fifo(int global_fifo, char* shared_memory, int length)
+{
+	int local_uuid = -1;
+	int local_fifo;
+	//TODO: check global_fifo to avoid attacks
+	local_uuid = global_fifo_list[global_fifo].local_uuid;
+	local_fifo = fifo_connect(local_uuid);
+	return fifo_write(local_fifo, (char*)shared_memory, length);
+}
 
 int syscall_fifo_write(int global_fifo, int shmid, int length)
 {
@@ -284,16 +320,15 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	shared_memory[length] = '\0';
 
 	/* TODO: Check whether the syscall can finished locally */
+	if (!is_global_fifo_local(global_fifo)){
+		//remote case
+		return write_remote_fifo(global_fifo, (char*)shared_memory, length);
+	}
 
 	/* Write data locally */
 	//1. write fifo
 	{
-		int local_uuid = -1;
-		int local_fifo;
-		//TODO: check global_fifo to avoid attacks
-		local_uuid = global_fifo_list[global_fifo].local_uuid;
-		local_fifo = fifo_connect(local_uuid);
-		fifo_write(local_fifo, (char*)shared_memory, length);
+	write_local_fifo(global_fifo, (char*)shared_memory, length);
 	}
 
 
