@@ -1,3 +1,8 @@
+/*
+ * This includes the declaration and structures of MoleculeOS
+ *
+ * 		Authors: Dong Du
+ * */
 #ifndef GLOBAL_SYSCALL_H
 #define GLOBAL_SYSCALL_H
 
@@ -10,9 +15,14 @@
 
 #include <global_syscall_protocol.h>
 
+/* Syscall and global methods */
 int global_syscall_loop(void);
 int global_os_init(int pu_id, int os_port);
 int get_current_pu_id(void);
+
+/* Global FIFO methods */
+int is_global_fifo_local(int global_fifo);
+
 
 /* Structure of Permission containers */
 typedef struct perm_container{

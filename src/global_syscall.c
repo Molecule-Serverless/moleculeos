@@ -1,3 +1,11 @@
+/*
+ * This is the codes of MoleculeOS main logics, including
+ * 	Syscall handling for global requests issued by local processes
+ * 	Operations implemented for global structures, e.g., global processe and global FIFO
+ *
+ * 	
+ * 	Author: Dong Du
+ * */
 #include<stdio.h>
 #include<stdlib.h>
 #include<arpa/inet.h>
@@ -177,6 +185,25 @@ int get_current_pu_id(void){
 
 
 /*===================Begin of Global FIFO */
+int check_global_fifo_bound(int global_fifo)
+{
+	if (global_fifo>=0 && global_fifo<GLOBAL_FIFO_LIST_SIZE){
+		return 0;
+	}
+
+	/*Just Panic*/
+	fprintf(stderr, "[MoleculeOS@%s] bound check error\n", __func__);
+	exit(-1);
+
+	return 0;
+}
+
+int is_global_fifo_local(int global_fifo)
+{
+	check_global_fifo_bound(global_fifo);
+	return global_fifo_list[global_fifo].pu_id == current_pu_id;
+}
+
 int syscall_fifo_init(int local_uuid, int owner_pid)
 {
 	int ret;
@@ -276,6 +303,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	//fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
 	return length;
 }
+
 /*===================End of Global FIFO */
 
 
