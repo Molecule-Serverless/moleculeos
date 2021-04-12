@@ -57,7 +57,9 @@ int invoke_global_syscall(int global_os_fd, char * syscall)
 	int ret;
 	memset(recvBuff, '0',sizeof(recvBuff));
 
+#ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[GlobalOS Runtime] Issue Syscall: %s\n", syscall);
+#endif
 	write(global_os_fd, syscall, strlen(syscall));
 
 #if 0
@@ -70,7 +72,9 @@ int invoke_global_syscall(int global_os_fd, char * syscall)
 	n = read(global_os_fd, recvBuff, sizeof(recvBuff)-1);
 	assert(n>0);
 	recvBuff[n] = 0;
+	#ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[GlobalOS Runtime] Syscall Return: %s\n", recvBuff);
+	#endif
 #endif
 	sscanf(recvBuff, SYSCALL_RSP_FORMAT, &ret);
 

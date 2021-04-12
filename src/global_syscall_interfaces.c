@@ -102,7 +102,9 @@ int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fi
 	*((int *)shared_memory) = 0xbeef;
 
 	/* FIXME: we need a shm mechanism here */
+#ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[%s] invoked\n", __func__);
+#endif
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_READ", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
@@ -156,7 +158,9 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_WRITE", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
+#ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[%s] invoked\n", __func__);
+#endif
 	return ret;
 }
 

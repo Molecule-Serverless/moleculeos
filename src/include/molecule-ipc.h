@@ -17,7 +17,8 @@
 /* Gloabl settings */
 #define FIFO_PATH_LEN 66
 #define MAX_MSG_LEN 4096
-#define FIFO_DEBUG 1
+//#define FIFO_DEBUG 1
+
 //#define FIFO_PATH_TEMPLATE "/tmp/ipc_fifo_id-%d"
 //#define FIFO_PATH_TEMPLATE "/env/ipc_fifo_id-%d"
 #define FIFO_PATH_TEMPLATE "/tmp/ipc_fifo_id-%d"

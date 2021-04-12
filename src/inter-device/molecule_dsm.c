@@ -471,8 +471,10 @@ int dsm_call(char* buf, int len){
     	molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, buf, len);
 	molecule_recv_msg(molecule_client_remote_ep, molecule_client_ucp_worker, dsm_resp_buf, 4096);
 	sscanf(dsm_resp_buf, DSM_RSP_FORMAT, &ret);
+#ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[MoleculeOS@%s] Recv DSM resp: %s\n",
 			    __func__, dsm_resp_buf);
+#endif
 	return ret;
 }
 
