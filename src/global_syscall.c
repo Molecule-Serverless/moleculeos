@@ -7,6 +7,7 @@
 #include<string.h>
 #include<sys/shm.h>
 
+#include <molecule-ipc.h>
 #include <global_syscall_protocol.h>
 #include <global_syscall.h>
 #include <chos/errno.h>

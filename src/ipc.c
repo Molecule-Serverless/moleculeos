@@ -15,6 +15,7 @@
 #include <molecule-ipc.h>
 
 /* Helper Functions */
+void throw(const char* message);
 #if 0
 void throw(const char* message) {
 	perror(message);
