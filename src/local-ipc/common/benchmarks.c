@@ -9,6 +9,7 @@
 #include "common/benchmarks.h"
 
 bench_t now() {
+#if 0
 #ifdef __MACH__
 	return ((double)clock()) / CLOCKS_PER_SEC * 1e9;
 #else
@@ -16,10 +17,15 @@ bench_t now() {
 //	timespec_get(&ts, TIME_UTC);
 //
 //	return ts.tv_sec * 1e9 + ts.tv_nsec;
-	return 0;
+#endif
+#else
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+
+	return ts.tv_sec * 1e9 + ts.tv_nsec;
+#endif
 	
 
-#endif
 }
 
 void setup_benchmarks(Benchmarks* bench) {
