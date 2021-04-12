@@ -84,6 +84,7 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
  * */
 
 char dsm_master_addr[48]; //the addr of dsm master
+#if 1
 void * globalOS_DSM(void)
 {
 	int pu_id = get_current_pu_id();
@@ -91,14 +92,48 @@ void * globalOS_DSM(void)
 	if (pu_id == 0){
 		// This is the main globalOS (working as server)
         	fprintf(stderr, "[MoleculeOS] I am master\n");
-		molecule_dsm_init(NULL);
+		//pu_id not used
+		molecule_dsm_init(NULL, 0);
 	}
 	else{
 		//FIXME: how should we know the addr of server? 
 		//molecule_dsm_init("127.0.0.1");
         	fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
-		molecule_dsm_init(dsm_master_addr);
+		//pu_id not used
+		molecule_dsm_init(dsm_master_addr, 0);
 	}
+
+	while (1){
+	    sleep(1);
+	}
+}
+#endif
+void * globalOS_DSM_server(void)
+{
+	int pu_id = get_current_pu_id();
+        printf("[MoleculeOS] DSM layer started\n");
+	// This is the main globalOS (working as server)
+       	fprintf(stderr, "[MoleculeOS] I am master\n");
+
+	/*Note: pu_id here is the current's pu_id */
+	molecule_dsm_init(NULL, pu_id);
+
+	while (1){
+	    sleep(1);
+	}
+}
+void * globalOS_DSM_client(void)
+{
+	int pu_id = get_current_pu_id();
+        printf("[MoleculeOS] DSM layer started\n");
+
+	//molecule_dsm_init("127.0.0.1");
+        fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
+
+	/* Note: 1 - pu_id is the remote's pu_id 
+	 * FIXME: this imp can not support >2 PUs!
+	 * */
+	molecule_dsm_init(dsm_master_addr, 1 - pu_id);
 
 	while (1){
 	    sleep(1);
@@ -110,7 +145,8 @@ int main(int argc, char *argv[])
 {
 	struct Local_Arguments args;
 #ifdef SMARTC
-	pthread_t DSM_thread;
+	pthread_t DSM_thread_server;
+	//pthread_t DSM_thread_client;
 	int ret;
 #endif
 
@@ -124,18 +160,23 @@ int main(int argc, char *argv[])
 	memcpy(dsm_master_addr, args.dsm_master_addr, strlen(args.dsm_master_addr));
 
 	//fprintf(stderr, "debug: %s\n", args.dsm_master_addr);
-	ret = pthread_create(&DSM_thread, NULL, (void*)globalOS_DSM, NULL);
+	//ret = pthread_create(&DSM_thread_server, NULL, (void*)globalOS_DSM_server, NULL);
+	//ret = pthread_create(&DSM_thread_client, NULL, (void*)globalOS_DSM_client, NULL);
+	ret = pthread_create(&DSM_thread_server, NULL, (void*)globalOS_DSM, NULL);
 	if (ret){
 	        fprintf(stderr, "Create pthread error!/n");
 		return 1;
 	}
+
 #endif
 
 	/* Loop1: wait for syscall events */
 	global_syscall_loop();
 
 #ifdef SMARTC
-	pthread_join(DSM_thread, NULL);
+	//pthread_join(DSM_thread_server, NULL);
+	//pthread_join(DSM_thread_client, NULL);
+	pthread_join(DSM_thread_server, NULL);
 #endif
 
 	return 0;

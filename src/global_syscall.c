@@ -169,7 +169,7 @@ int global_os_init(int pu_id, int os_port)
 
 	//FIXME: different global-OS on different PU has different pu_id
 	current_pu_id = pu_id;
-	global_os_port = os_port;
+	global_os_port = os_port + pu_id; // we always use pu_id as an offset to change the port
 
 	fprintf(stderr, "MoleculeOS inited, PU_ID: %d, OS_port: %d\n",
 			current_pu_id, global_os_port);

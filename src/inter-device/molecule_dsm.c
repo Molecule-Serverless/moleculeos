@@ -215,13 +215,16 @@ err:
 /*
  * Molecule Global States for Comm.
  * */
-ucp_ep_h remote_ep;
-ucp_worker_h molecule_ucp_worker;
+ucp_ep_h molecule_server_remote_ep;
+ucp_worker_h molecule_server_ucp_worker;
+
+ucp_ep_h molecule_client_remote_ep;
+ucp_worker_h molecule_client_ucp_worker;
 
 /*
  * Molecule_send_msg
  * */
-int molecule_send_msg(char* msg_buf, int len)
+int molecule_send_msg(ucp_ep_h remote_ep, ucp_worker_h molecule_ucp_worker, char* msg_buf, int len)
 {
     struct msg *msg             = NULL;
     struct ucx_context *request = NULL;
@@ -262,7 +265,7 @@ int molecule_send_msg(char* msg_buf, int len)
     return ret;
 }
 
-int molecule_recv_msg(char * msg_buf, int len){
+int molecule_recv_msg(ucp_ep_h remote_ep, ucp_worker_h molecule_ucp_worker, char * msg_buf, int len){
     struct msg *msg             = NULL;
     struct ucx_context *request = NULL;
     size_t msg_len              = 0;
@@ -425,11 +428,15 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
     mem_type_free(msg);
 
     /* Molecule-DSM: init global variables here: */
-    molecule_ucp_worker = ucp_worker;
-    remote_ep = server_ep;
+    molecule_client_ucp_worker = ucp_worker;
+    molecule_client_remote_ep = server_ep;
     sleep(1);
     for (i=0; i<5; i++){
-    	molecule_send_msg("hello,world\n", 12);
+	char dsm_resp_buf[512];
+    	molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, "hello,world\n", 12);
+	molecule_recv_msg(molecule_client_remote_ep, molecule_client_ucp_worker, dsm_resp_buf, 512);
+	fprintf(stderr, "[MoleculeOS@%s] Recv DSM resp: %s\n",
+			    __func__, dsm_resp_buf);
 	sleep(1);
     }
     while (1) {
@@ -603,13 +610,14 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
            status, ucs_status_string(status));
 
     /* Molecule-DSM: init global variables here: */
-    molecule_ucp_worker = ucp_worker;
-    remote_ep = client_ep;
+    molecule_server_ucp_worker = ucp_worker;
+    molecule_server_remote_ep = client_ep;
     while (1) {
 	    char dsm_call_buf[512];
-	    molecule_recv_msg(dsm_call_buf, 512);
+	    molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 512);
 	    fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
 			    __func__, dsm_call_buf);
+    	    molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, "hello, Dd\n", 10);
     }
 
     ret = 0;
@@ -642,7 +650,7 @@ static int dsm_main(const char *client_target_name, ucp_worker_h ucp_worker)
  * 	NULL: this is the server side
  * 	Addr: this is the client side, and the value is server's addr
  * */
-int molecule_dsm_init(char *client_target_name)
+int molecule_dsm_init(char *client_target_name, int pu_id)
 {
     /* UCP temporary vars */
     ucp_params_t ucp_params;
@@ -704,7 +712,7 @@ int molecule_dsm_init(char *client_target_name)
     if (client_target_name) {
         peer_addr_len = local_addr_len;
 
-        oob_sock = client_connect(client_target_name, server_port);
+        oob_sock = client_connect(client_target_name, server_port + pu_id);
         CHKERR_JUMP(oob_sock < 0, "client_connect\n", err_addr);
 
         ret = recv(oob_sock, &addr_len, sizeof(addr_len), MSG_WAITALL);
@@ -719,7 +727,7 @@ int molecule_dsm_init(char *client_target_name)
         CHKERR_JUMP_RETVAL(ret != (int)peer_addr_len,
                            "receive address\n", err_peer_addr, ret);
     } else {
-        oob_sock = server_connect(server_port);
+        oob_sock = server_connect(server_port + pu_id);
         CHKERR_JUMP(oob_sock < 0, "server_connect\n", err_peer_addr);
 
         addr_len = local_addr_len;

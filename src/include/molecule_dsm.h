@@ -2,6 +2,6 @@
 #define MOLECULE_IPC_H
 
 
-int molecule_dsm_init(char *client_target_name);
+int molecule_dsm_init(char *client_target_name, int pu_id);
 
 #endif
