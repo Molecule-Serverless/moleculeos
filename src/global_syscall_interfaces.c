@@ -106,6 +106,16 @@ int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fi
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_READ", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
+	if (ret<0)
+		return ret;
+
+	if (ret>8192 || ret>len){
+		fprintf(stderr, "[%s] msg too long\n", __func__);
+		return -1;
+	}
+
+	memcpy(buf, shared_memory, ret);
+
 	return ret;
 }
 
@@ -139,7 +149,7 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	*((int *)shared_memory) = 0xbeef;
 	/* FIXME: we need a shm mechanism here */
 
-	assert(len<4096);
+	assert(len<=4096);
 
 	memcpy(shared_memory, buf, len);
 

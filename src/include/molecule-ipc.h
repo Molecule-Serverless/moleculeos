@@ -48,6 +48,7 @@ int fifo_server_setup(int uuid); //return a fifo_fd
 int fifo_init(void); //return a self-fifo (named using self pid).
 int fifo_connect(int uuid); //connect to fifo-uuid, return a fifo_fd
 
+void fifo_close(int fifo_fd) ;
 void fifo_finish(int fifo_fd); //close a fifo_fd
 void fifo_clean(void); //close and destory self-fifo
 

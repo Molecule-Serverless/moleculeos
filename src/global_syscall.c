@@ -42,6 +42,7 @@ int syscall_fifo_init(int local_uuid, int owner_pid);
 int syscall_fifo_close(int global_fifo);
 int syscall_fifo_read(int global_fifo, int shmid, int length);
 int syscall_fifo_write(int global_fifo, int shmid, int length);
+int syscall_fifo_connect(int global_fifo);
 
 //End of syscall handler list
 
@@ -253,16 +254,35 @@ int syscall_fifo_close(int global_fifo)
 	return 0;
 }
 
-int syscall_fifo_read(int global_fifo, int shmid, int length)
+int syscall_fifo_connect(int global_fifo)
 {
 	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	return 0;
+}
 
+
+int syscall_fifo_read(int global_fifo, int shmid, int length)
+{
+	fprintf(stderr, "[Info@%s] syscall invoked\n", __func__);
+#ifdef SMARTC
+	if (!is_global_fifo_local(global_fifo)){
+		//remote case
+		//return read_remote_fifo(global_fifo, (char*)shared_memory, length);
+		return -1;
+	}
+#endif
 
 	//let the process read it locally
 	return -EFIFOLOCAL;
-	//return 0;
 }
+
 #ifdef SMARTC
+int read_remote_fifo(int global_fifo, char* shared_memory, int length)
+{
+	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+	return 0;
+
+}
 int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 {
 //#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
@@ -283,10 +303,13 @@ int write_local_fifo(int global_fifo, char* shared_memory, int length)
 {
 	int local_uuid = -1;
 	int local_fifo;
+	int ret;
 	//TODO: check global_fifo to avoid attacks
 	local_uuid = global_fifo_list[global_fifo].local_uuid;
 	local_fifo = fifo_connect(local_uuid);
-	return fifo_write(local_fifo, (char*)shared_memory, length);
+	ret = fifo_write(local_fifo, (char*)shared_memory, length);
+	fifo_close(local_fifo);
+	return ret;
 }
 
 int syscall_fifo_write(int global_fifo, int shmid, int length)

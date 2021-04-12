@@ -97,6 +97,10 @@ void fifo_finish(int fifo_fd) {
 	close(fifo_fd);
 }
 
+void fifo_close(int fifo_fd) {
+	close(fifo_fd);
+}
+
 /*Note(DD): fifo_clean will not close a fifo_fd, please do it through fifo_finish */
 void fifo_clean(void) //destory self-fifo
 {

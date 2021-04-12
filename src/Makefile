@@ -54,6 +54,17 @@ example-neighbor-ipc: example-neighboripc-client example-neighboripc-server
 	@echo Read the Server global fifo value, e.g.,1
 	@echo ./example-neighboripc-client -i server_global_fifo_value
 
+tests: test-fifo-lat
+	@echo build tests successfully
+	@echo Please follow the scripts/README in each test dir to run them
+
+test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
+
+test-fifo-lat-client: tests/fifo-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
+
+test-fifo-lat-server: tests/fifo-lat/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 example-ipc-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
