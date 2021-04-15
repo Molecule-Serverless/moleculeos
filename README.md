@@ -12,10 +12,45 @@ MoleculeOS now provides:
 
 ### Build
 
+Enter the source dir:
+
 	cd src
+
+Build MoleculeOS:
+
 	make
 
-### Demos
+Build Demo Test:
+
+	make tests
+
+### Run Demos
+
+Open three terminals.
+
+Note: all the folloing commands happen on src/ dir.
+
+In the first terminal, start moleculeOS:
+
+	./moleculeos -i 0
+
+Note: the -i here, means the PU-id of the globalOS
+
+In the second terminal, run the server process:
+
+	./test-fifo-lat-server
+
+In the thrid terminal, run the client process:
+
+	./test-fifo-lat-client -i 1 -s 64 -c 1000
+
+Note:
+- i: here means the global FIFO used by server, please check the value by seeing the logs in ./test-fifo-lat-server
+- s: means the test size (e.g., 64 means 64Bytes)
+- c: means the count to run test cases (e.g., 100 means run 100 times)
+
+
+	
 
 
 #### (Example/ipc) User-client and User-server communicate
