@@ -1,0 +1,175 @@
+MoleculeOS inited, PU_ID: 0, OS_port: 65259
+[MoleculeOS] I am master
+[global_syscall_loop] globalOS connection inited
+MoleculeOS inited, PU_ID: 1, OS_port: 65260
+[global_syscall_loop] globalOS connection inited
+[MoleculeOS] Master at 127.0.0.1
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 1
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60237
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 1
+Server global fifo:1
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 1
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60242
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 1
+
+============ RESULTS ================
+Message size:       16
+Message count:      300
+Total duration:     25.061	ms
+Average duration:   79.063	us
+Minimum duration:   65.280	us
+Maximum duration:   116.480	us
+Standard deviation: 11.179	us
+Message rate:       11970	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 2
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60243
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 2
+
+============ RESULTS ================
+Message size:       32
+Message count:      300
+Total duration:     22.344	ms
+Average duration:   71.662	us
+Minimum duration:   64.256	us
+Maximum duration:   104.960	us
+Standard deviation: 4.793	us
+Message rate:       13426	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 3
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60244
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 3
+
+============ RESULTS ================
+Message size:       64
+Message count:      300
+Total duration:     21.361	ms
+Average duration:   68.673	us
+Minimum duration:   61.696	us
+Maximum duration:   104.960	us
+Standard deviation: 4.855	us
+Message rate:       14044	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 4
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60245
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 4
+
+============ RESULTS ================
+Message size:       128
+Message count:      300
+Total duration:     22.110	ms
+Average duration:   70.715	us
+Minimum duration:   65.280	us
+Maximum duration:   88.064	us
+Standard deviation: 3.647	us
+Message rate:       13568	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 5
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60246
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 5
+
+============ RESULTS ================
+Message size:       256
+Message count:      300
+Total duration:     20.952	ms
+Average duration:   67.160	us
+Minimum duration:   61.696	us
+Maximum duration:   78.848	us
+Standard deviation: 2.770	us
+Message rate:       14318	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 6
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60247
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 6
+
+============ RESULTS ================
+Message size:       512
+Message count:      300
+Total duration:     21.091	ms
+Average duration:   67.983	us
+Minimum duration:   59.392	us
+Maximum duration:   84.480	us
+Standard deviation: 4.103	us
+Message rate:       14224	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 7
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60248
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 7
+
+============ RESULTS ================
+Message size:       1024
+Message count:      300
+Total duration:     22.618	ms
+Average duration:   72.339	us
+Minimum duration:   66.560	us
+Maximum duration:   90.112	us
+Standard deviation: 3.822	us
+Message rate:       13263	msg/s
+=====================================
+[register_self_global] invoked
+[global_syscall_loop] new process connected
+[register_self_global] resp: self_global_id: 8
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-60249
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 8
+
+============ RESULTS ================
+Message size:       2048
+Message count:      300
+Total duration:     21.326	ms
+Average duration:   68.467	us
+Minimum duration:   61.952	us
+Maximum duration:   94.720	us
+Standard deviation: 4.021	us
+Message rate:       14067	msg/s
+=====================================
