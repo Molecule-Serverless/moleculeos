@@ -47,4 +47,12 @@ typedef struct global_fifo{
 	perm_container_t perms; //The containers that can access this FIFO
 } global_fifo_t;
 
+/* Structure of Global Processes */
+typedef struct global_process{
+	int pu_id; //the PU of the fifo
+	int local_pid; //the local PID (in the pu) of the owner process
+	int global_pid; //The global pid
+	char * shm; //shm for communicating with each shm (only useful when globalOS and GP on same PU)
+} global_process_t;
+
 #endif

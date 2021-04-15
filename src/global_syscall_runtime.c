@@ -52,10 +52,12 @@ int connect_global_OS(int os_port)
 
 int invoke_global_syscall(int global_os_fd, char * syscall)
 {
-	char recvBuff[1024];
+	char recvBuff[32];
 	int n;
 	int ret;
-	memset(recvBuff, '0',sizeof(recvBuff));
+
+	/*FIXME: memset maybe necessary but costful */
+	//memset(recvBuff, '0',sizeof(recvBuff));
 
 #ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[GlobalOS Runtime] Issue Syscall: %s\n", syscall);

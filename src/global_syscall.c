@@ -26,7 +26,7 @@
 
 /* Global Process Table */
 #define GLOBAL_PROCESS_LIST_SIZE 4096
-int global_process_list[GLOBAL_PROCESS_LIST_SIZE];
+global_process_t global_process_list[GLOBAL_PROCESS_LIST_SIZE];
 static int global_process_now = 0;
 
 #define LOCAL_FIFO_LIST_SIZE 512
@@ -110,9 +110,28 @@ int global_syscall_loop(void)
 		    //RegisterSelfGlobal
 		    if (strcmp(func_name, "RegisterSelfGlobal") == 0) {
 			    global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
-			    if (!global_process_list[global_process_now]){
-			    	global_process_list[global_process_now] = 1;
+			    if (global_process_list[global_process_now].local_pid<0){
+				key_t segment_key;
+				int segment_id;
+				int shm_uuid = 1;
+				char shmid_string[256];
+
+			    	global_process_list[global_process_now].pu_id = current_pu_id;
+			    	global_process_list[global_process_now].local_pid = func_args1;
+			    	global_process_list[global_process_now].global_pid = global_process_now;
 				ret = global_process_now;
+
+				/* establish shm now */
+				shm_uuid = ret; //global_process_now as uuid
+				sprintf(shmid_string, "%d", shm_uuid);
+				segment_key = generate_key(shmid_string);
+				segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+				if (segment_id < 0) {
+					throw("Could not get segment");
+				}
+
+			    	global_process_list[global_process_now].shm = shmat(segment_id, NULL, 0);
 			    }else{
 				//FIXME: here, we do not fully use the space of the process_list
 		    		fprintf(stderr, "[Error@%s] global process full\n", __func__);
@@ -158,12 +177,18 @@ int global_syscall_loop(void)
     }
     return 0;
 }
-
 int global_os_init(int pu_id, int os_port)
 {
 	int i;
-	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++)
-		global_process_list[i] = 0;
+	
+	/* FIXME: the initialization should sync with other PUs */
+	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++){
+		global_process_list[i].pu_id = -1;
+		global_process_list[i].local_pid = -1;
+		global_process_list[i].global_pid = i;
+		global_process_list[i].shm = NULL;
+	}
+
 	for (i=0; i<GLOBAL_FIFO_LIST_SIZE; i++) {
 		//we use pu_id to indicate whether this is a valid fifo
 		global_fifo_list[i].pu_id = -1;
@@ -319,6 +344,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	/* Test of shm */
 	char* shared_memory;
 	// Key for the memory segment
+#if 0
 	key_t segment_key;
 	int segment_id;
 	int shm_uuid = 1;
@@ -337,6 +363,10 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	}
 
 	shared_memory = (char*)shmat(segment_id, NULL, 0);
+#else
+	/* We can directly got the shm through process_list*/
+	shared_memory = global_process_list[shmid].shm;
+#endif
 
 	if (shared_memory < (char*)0) {
 		//throw("Could not attach segment");

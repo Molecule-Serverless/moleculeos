@@ -16,12 +16,20 @@
 static int global_OS_id = -1;
 static int self_global_id = -1;
 
+
+static int global_OS_shm_client_uuid = -1;
+static void* global_OS_shm_client_addr = NULL;
 /*
  * It should be invoked before other global functions
  * */
 int register_self_global(int os_port) //return a global pid
 {
 	char buffer[256];
+	key_t segment_key;
+	int segment_id;
+	int shm_uuid = -1; //default connection_id
+	char shmid_string[256];
+	char* shared_memory;
 
 	fprintf(stderr, "[%s] invoked\n", __func__);
 
@@ -32,6 +40,29 @@ int register_self_global(int os_port) //return a global pid
 	self_global_id = invoke_global_syscall(global_OS_id, buffer);
 
 	fprintf(stderr, "[%s] resp: self_global_id: %d\n", __func__, self_global_id);
+
+	/* 
+	 * We pass one 1-shm to the globalOS now (for bulk data transfer),
+	 * so we can avoid shm-establish costs after that 
+	 * */
+	//we use the self_global_id as shm_uuid, which is supposed managed by globalOS
+	shm_uuid = self_global_id; 
+	sprintf(shmid_string, "%d", shm_uuid);
+	segment_key = generate_key(shmid_string);
+	segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+	if (segment_id < 0) {
+		throw("Could not get segment");
+	}
+
+	shared_memory = (char*)shmat(segment_id, NULL, 0);
+
+	if (shared_memory < (char*)0) {
+		throw("Could not attach segment");
+	}
+	global_OS_shm_client_uuid = self_global_id;
+	global_OS_shm_client_addr = shared_memory;
+
 
 	return 0;
 }
@@ -79,11 +110,14 @@ int global_fifo_close(int global_fifo) //close a global fifo_fd
 int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fifo_fd
 {
 	int ret;
-	char buffer[256];
-	char* shared_memory;
-	key_t segment_key;
-	int segment_id;
-	int shm_uuid = 1;
+	char buffer[64];
+	//key_t segment_key;
+	//int segment_id;
+	//Note: Get shm from global
+	int shm_uuid = global_OS_shm_client_uuid;
+	char* shared_memory = global_OS_shm_client_addr;
+
+#if 0 /* Establish shm on-demand*/
 	char shmid_string[256];
 
 	sprintf(shmid_string, "%d", shm_uuid);
@@ -100,11 +134,13 @@ int global_fifo_read(int global_fifo, char*buf, int len) //read from a global fi
 		throw("Could not attach segment");
 	}
 	*((int *)shared_memory) = 0xbeef;
+#endif
 
 	/* FIXME: we need a shm mechanism here */
 #ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[%s] invoked\n", __func__);
 #endif
+
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_READ", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
 
@@ -125,14 +161,17 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 {
 	int ret;
 	char buffer[256];
-	/* Test of shm */
-	char* shared_memory;
 	// Key for the memory segment
+#if 0
 	key_t segment_key;
 	int segment_id;
 	int shm_uuid = 1;
 	char shmid_string[256];
+#endif
+	int shm_uuid = global_OS_shm_client_uuid;
+	char* shared_memory = global_OS_shm_client_addr;
 
+#if 0
 	sprintf(shmid_string, "%d", shm_uuid);
 
 	//segment_key = generate_key(itoa(shm_uuid));
@@ -150,6 +189,7 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	}
 	*((int *)shared_memory) = 0xbeef;
 	/* FIXME: we need a shm mechanism here */
+#endif
 
 	assert(len<=4096);
 
