@@ -23,6 +23,7 @@ typedef enum {
 
 typedef struct {
     int  is_uct_desc;
+    int  len;
 } recv_desc_t;
 
 typedef struct {
@@ -124,6 +125,24 @@ ucs_status_t do_am_short(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
     return status;
 }
 
+ucs_status_t molecule_do_am_short(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
+                         int len, char *buf)
+{
+    ucs_status_t    status;
+    am_short_args_t send_args;
+
+    am_short_params_pack(buf, len, &send_args);
+
+    do {
+        /* Send active message to remote endpoint */
+        status = uct_ep_am_short(ep, id, send_args.header, send_args.payload,
+                                 send_args.len);
+        uct_worker_progress(if_info->worker);
+    } while (status == UCS_ERR_NO_RESOURCE);
+
+    return status;
+}
+
 /* Pack callback for am_bcopy */
 size_t am_bcopy_data_pack_cb(void *dest, void *arg)
 {
@@ -203,6 +222,7 @@ ucs_status_t do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
             status = UCS_OK;
         }
     }
+    desc_holder = (void *)NULL; //set to NULL back before we return
     return status;
 }
 static void print_strings(const char *label, const char *local_str,
@@ -221,12 +241,13 @@ static ucs_status_t hello_world(void *arg, void *data, size_t length,
     func_am_t func_am_type = *(func_am_t *)arg;
     recv_desc_t *rdesc;
 
-    print_strings("callback", func_am_t_str(func_am_type), data, length);
+    //print_strings("callback", func_am_t_str(func_am_type), data, length);
 
     if (flags & UCT_CB_PARAM_FLAG_DESC) {
         rdesc = (recv_desc_t *)data - 1;
         /* Hold descriptor to release later and return UCS_INPROGRESS */
         rdesc->is_uct_desc = 1;
+        rdesc->len = length;
         desc_holder = rdesc;
         return UCS_INPROGRESS;
     }
@@ -236,6 +257,7 @@ static ucs_status_t hello_world(void *arg, void *data, size_t length,
     rdesc = malloc(sizeof(*rdesc) + length);
     CHKERR_ACTION(rdesc == NULL, "allocate memory\n", return UCS_ERR_NO_MEMORY);
     rdesc->is_uct_desc = 0;
+    rdesc->len = length;
     memcpy(rdesc + 1, data, length);
     desc_holder = rdesc;
     return UCS_OK;
@@ -446,7 +468,8 @@ int parse_cmd(int argc, char * const argv[], cmd_args_t *args)
 
     /* Defaults */
     args->server_port   = 13337;
-    args->func_am_type  = FUNC_AM_SHORT;
+    //args->func_am_type  = FUNC_AM_SHORT;
+    args->func_am_type  = FUNC_AM_ZCOPY;
     args->test_strlen   = 16;
 
     opterr = 0;
@@ -571,6 +594,144 @@ int sendrecv(int sock, const void *sbuf, size_t slen, void **rbuf)
 int dsm_call(char* buf, int len){
 	fprintf(stderr, "[%s] Not supported\n", __func__);
 	return 0;
+}
+
+/*
+ * Molecule_send_msg
+ * */
+int molecule_send_msg(char* msg_buf, int len,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+    ucs_status_t        status      = UCS_OK; /* status codes for UCS */
+    int                 res;
+    char *str;
+
+    assert(len<=8192);
+    str = (char *)mem_type_malloc(len);
+    memcpy(str, msg_buf, len);
+    str[len] = '\0';
+
+    status = molecule_do_am_short(if_info, ep, id, len, str);
+
+    mem_type_free(str);
+    CHKERR_JUMP(UCS_OK != status, "send active msg", err);
+    return;
+
+err:
+    fprintf(stderr, "[Error@MoleculeOS] %s error!\n", __func__);
+}
+
+/*
+ * Molecule_recv_msg
+ * */
+int molecule_recv_msg(char* msg_buf, int len,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+        recv_desc_t *rdesc;
+        while (desc_holder == NULL) {
+            /* Explicitly progress any outstanding active message requests */
+            uct_worker_progress(if_info->worker);
+        }
+
+        rdesc = desc_holder;
+//        print_strings("main", func_am_t_str(cmd_args->func_am_type),
+//                      (char *)(rdesc + 1), rdesc->len);
+	memcpy(msg_buf, (char *)(rdesc + 1), rdesc->len);
+	msg_buf[rdesc->len] = '\0';
+
+#if 1
+        if (rdesc->is_uct_desc) {
+            /* Release descriptor because callback returns UCS_INPROGRESS */
+            uct_iface_release_desc(rdesc);
+        } else {
+            free(rdesc);
+        }
+#endif
+
+	desc_holder = NULL;  //set to NULL back before we return
+	return rdesc->len;
+}
+
+void run_client(cmd_args_t * cmd_args,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+    ucs_status_t        status      = UCS_OK; /* status codes for UCS */
+    int                 res;
+    int i;
+
+    char *str = (char *)mem_type_malloc(cmd_args->test_strlen);
+    CHKERR_ACTION(str == NULL, "allocate memory",
+                  status = UCS_ERR_NO_MEMORY; goto err);
+    res = generate_test_string(str, cmd_args->test_strlen);
+    CHKERR_ACTION(res < 0, "generate test string",
+                  status = UCS_ERR_NO_MEMORY; goto err);
+
+    /* Send active message to remote endpoint */
+    if (cmd_args->func_am_type == FUNC_AM_SHORT) {
+        status = do_am_short(if_info, ep, id, cmd_args, str);
+    } else if (cmd_args->func_am_type == FUNC_AM_BCOPY) {
+        status = do_am_bcopy(if_info, ep, id, cmd_args, str);
+    } else if (cmd_args->func_am_type == FUNC_AM_ZCOPY) {
+        status = do_am_zcopy(if_info, ep, id, cmd_args, str);
+    }
+
+    mem_type_free(str);
+    CHKERR_JUMP(UCS_OK != status, "send active msg", err);
+
+    /* Loop for tests */
+    for (i=0; i<10; i++){
+	char resp_buf[256];
+    	molecule_send_msg("hello world\n", 12, if_info, ep, id);
+	molecule_recv_msg(resp_buf, 256, if_info, ep, id);
+	fprintf(stderr,"[%s] got %s\n", __func__, resp_buf);
+    }
+
+    return;
+err:
+    fprintf(stderr, "[Error@MoleculeOS] %s error!\n", __func__);
+
+    return;
+}
+
+void run_server(cmd_args_t * cmd_args,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+        recv_desc_t *rdesc;
+
+	while (1) {
+		char req_buf[256];
+		molecule_recv_msg(req_buf, 256, if_info, ep, id);
+		fprintf(stderr,"[%s] got %s\n", __func__, req_buf);
+    		molecule_send_msg("Bye world\n", 10, if_info, ep, id);
+#if 0
+        	while (desc_holder == NULL) {
+        	    /* Explicitly progress any outstanding active message requests */
+        	    uct_worker_progress(if_info->worker);
+        	}
+
+        	rdesc = desc_holder;
+        	print_strings("main", func_am_t_str(cmd_args->func_am_type),
+        	              (char *)(rdesc + 1), cmd_args->test_strlen);
+
+#if 1
+        	if (rdesc->is_uct_desc) {
+        	    /* Release descriptor because callback returns UCS_INPROGRESS */
+        	    uct_iface_release_desc(rdesc);
+        	} else {
+        	    free(rdesc);
+        	}
+#endif
+#endif
+	}
+	return;
 }
 
 /*
@@ -748,6 +909,8 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
     CHKERR_JUMP(UCS_OK != status, "set callback", out_free_ep);
 
     if (cmd_args.server_name) {
+	run_client(&cmd_args, &if_info, ep, id);
+#if 0
         char *str = (char *)mem_type_malloc(cmd_args.test_strlen);
         CHKERR_ACTION(str == NULL, "allocate memory",
                       status = UCS_ERR_NO_MEMORY; goto out_free_ep);
@@ -766,7 +929,10 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
 
         mem_type_free(str);
         CHKERR_JUMP(UCS_OK != status, "send active msg", out_free_ep);
+#endif
     } else {
+	run_server(&cmd_args, &if_info, ep, id);
+#if 0
         recv_desc_t *rdesc;
 
         while (desc_holder == NULL) {
@@ -784,6 +950,7 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
         } else {
             free(rdesc);
         }
+#endif
     }
 
     if (barrier(oob_sock)) {
