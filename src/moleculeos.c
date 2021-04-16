@@ -93,21 +93,23 @@ void * globalOS_DSM(void)
 		// This is the main globalOS (working as server)
         	fprintf(stderr, "[MoleculeOS] I am master\n");
 		//pu_id not used
-		molecule_dsm_init(NULL, 0);
+		//molecule_dsm_init(NULL, 0);
+		uct_molecule_dsm_init(NULL, 0, "enp125s0f0", "tcp");
 	}
 	else{
 		//FIXME: how should we know the addr of server? 
 		//molecule_dsm_init("127.0.0.1");
         	fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
 		//pu_id not used
-		molecule_dsm_init(dsm_master_addr, 0);
+		//molecule_dsm_init(dsm_master_addr, 0);
+		uct_molecule_dsm_init(dsm_master_addr, 0, "enp125s0f0", "tcp");
 	}
 
 	while (1){
 	    sleep(1);
 	}
 }
-#endif
+#else
 void * globalOS_DSM_server(void)
 {
 	int pu_id = get_current_pu_id();
@@ -139,7 +141,8 @@ void * globalOS_DSM_client(void)
 	    sleep(1);
 	}
 }
-#endif
+#endif //if-1
+#endif //SMARTC
 
 int main(int argc, char *argv[])
 {
