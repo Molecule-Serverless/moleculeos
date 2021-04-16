@@ -24,6 +24,8 @@ typedef struct Local_Arguments {
 	int os_port; //the port of this global OS
 #ifdef SMARTC
 	char dsm_master_addr[48]; //the addr of dsm master
+	char dev_name[48]; //the addr of dsm master
+	char tl_name[48]; //the addr of dsm master
 #endif
 } Local_Arguments;
 
@@ -42,7 +44,11 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 	arguments->os_port = GLOBAL_OS_PORT; //default one
 #ifdef SMARTC
 	memset(arguments->dsm_master_addr, '\0', 48);
+	memset(arguments->dev_name, '\0', 48);
+	memset(arguments->tl_name, '\0', 48);
 	memcpy(arguments->dsm_master_addr, "127.0.0.1", 9) ; //default one
+	memcpy(arguments->dev_name, "eth0", 4); //default one
+	memcpy(arguments->tl_name, "tcp", 3) ; //default one
 	//fprintf(stderr, "debug: %s\n",arguments->dsm_master_addr);
 #endif
 
@@ -52,13 +58,16 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 			{"pu id",  required_argument, NULL, 'i'},
 			{"os port", required_argument, NULL, 'p'},
 #ifdef SMARTC
-			{"dsm master addr", required_argument, NULL, 'd'},
+			{"dsm master addr", required_argument, NULL, 'm'},
+			{"dev name", required_argument, NULL, 'd'},
+			{"transport name", required_argument, NULL, 't'},
 #endif
 			{0,       0,                 0,     0}
 	};
+
 	while (1) {
 #ifdef SMARTC
-		opt = getopt_long(argc, argv, "+:i:p:d:", long_options, &long_index);
+		opt = getopt_long(argc, argv, "+:i:p:m:d:t:", long_options, &long_index);
 #else
 		opt = getopt_long(argc, argv, "+:i:p:", long_options, &long_index);
 #endif
@@ -68,7 +77,9 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 			case 'i': arguments->pu_id = atoi(optarg); break;
 			case 'p': arguments->os_port = atoi(optarg); break;
 #ifdef SMARTC
-			case 'd': memcpy(arguments->dsm_master_addr, optarg, strlen(optarg)); break;
+			case 'm': memcpy(arguments->dsm_master_addr, optarg, strlen(optarg)); break;
+			case 'd': memcpy(arguments->dev_name, optarg, strlen(optarg)); break;
+			case 't': memcpy(arguments->tl_name, optarg, strlen(optarg)); break;
 #endif
 			default: continue;
 		}
@@ -84,6 +95,15 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
  * */
 
 char dsm_master_addr[48]; //the addr of dsm master
+char dev_name[48]; 
+char tl_name[48];
+		//uct_molecule_dsm_init(dsm_master_addr, 0, "enp125s0f0", "tcp");
+/*
+ * Example: 
+ * 	dev_name = enp125s0f0, tl_nam=tcp
+ * 	dev_name = mlx5_1:1, tl_nam=ud_mlx5
+ *
+ * */
 #if 1
 void * globalOS_DSM(void)
 {
@@ -91,18 +111,20 @@ void * globalOS_DSM(void)
         printf("[MoleculeOS] DSM layer started\n");
 	if (pu_id == 0){
 		// This is the main globalOS (working as server)
-        	fprintf(stderr, "[MoleculeOS] I am master\n");
+        	fprintf(stderr, "[MoleculeOS] I am master, work on (%s/%s)\n",
+				dev_name, tl_name);
 		//pu_id not used
 		//molecule_dsm_init(NULL, 0);
-		uct_molecule_dsm_init(NULL, 0, "enp125s0f0", "tcp");
+		uct_molecule_dsm_init(NULL, 0, dev_name, tl_name);
 	}
 	else{
 		//FIXME: how should we know the addr of server? 
 		//molecule_dsm_init("127.0.0.1");
-        	fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
+        	fprintf(stderr, "[MoleculeOS] Master at %s, work on (%s/%s)\n", dsm_master_addr,
+				dev_name, tl_name);
 		//pu_id not used
 		//molecule_dsm_init(dsm_master_addr, 0);
-		uct_molecule_dsm_init(dsm_master_addr, 0, "enp125s0f0", "tcp");
+		uct_molecule_dsm_init(dsm_master_addr, 0, dev_name, tl_name);
 	}
 
 	while (1){
@@ -160,7 +182,11 @@ int main(int argc, char *argv[])
 
 #ifdef SMARTC
 	memset(dsm_master_addr, '\0', 48);
+	memset(dev_name, '\0', 48);
+	memset(tl_name, '\0', 48);
 	memcpy(dsm_master_addr, args.dsm_master_addr, strlen(args.dsm_master_addr));
+	memcpy(dev_name, args.dev_name, strlen(args.dev_name));
+	memcpy(tl_name, args.tl_name, strlen(args.tl_name));
 
 	//fprintf(stderr, "debug: %s\n", args.dsm_master_addr);
 	//ret = pthread_create(&DSM_thread_server, NULL, (void*)globalOS_DSM_server, NULL);
