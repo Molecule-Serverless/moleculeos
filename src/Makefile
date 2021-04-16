@@ -17,6 +17,9 @@ SYSCALL_RUNTIME_LIB_SOURCES = global_syscall_interfaces.c global_syscall_runtime
 UCX_LIB?=../../ucx/build/lib/
 UCX_INCLUDE?=../../ucx/build/include/
 
+USER_LIB_SOURCES = ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+USER_LIB_OBJS = $(patsubst %.c,%.o, $(notdir $(USER_LIB_SOURCES)))
+
 All: moleculeos
 
 ## A Local Development Version of MoleculeOS
@@ -63,6 +66,11 @@ test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
 
 test-fifo-lat-client: tests/fifo-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+
+moleculeos-userlib: $(USER_LIB_SOURCES)
+	#gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+	gcc -c $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
+	ar rcs libmoleculeos.a $(USER_LIB_OBJS)
 
 test-fifo-lat-server: tests/fifo-lat/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
