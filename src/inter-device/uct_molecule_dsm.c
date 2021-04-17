@@ -131,14 +131,18 @@ ucs_status_t molecule_do_am_short(iface_info_t *if_info, uct_ep_h ep, uint8_t id
     ucs_status_t    status;
     am_short_args_t send_args;
 
+    fprintf(stderr, "[%s] flag-1\n", __func__);
     am_short_params_pack(buf, len, &send_args);
+    fprintf(stderr, "[%s] flag-2\n", __func__);
 
+    fprintf(stderr, "[%s] ", __func__);
     do {
         /* Send active message to remote endpoint */
         status = uct_ep_am_short(ep, id, send_args.header, send_args.payload,
                                  send_args.len);
         uct_worker_progress(if_info->worker);
     } while (status == UCS_ERR_NO_RESOURCE);
+    fprintf(stderr, "[%s] flag-3\n", __func__);
 
     return status;
 }
@@ -225,6 +229,56 @@ ucs_status_t do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
     desc_holder = (void *)NULL; //set to NULL back before we return
     return status;
 }
+
+ucs_status_t molecule_do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
+                         int len, char *buf)
+{
+    ucs_status_t status = UCS_OK;
+    uct_mem_h memh;
+    uct_iov_t iov;
+    zcopy_comp_t comp;
+
+//    fprintf(stderr, "[MoleculeOS@%s] if_info: 0x%p, ep: 0x%p, id: 0x%x, len: %d, buf: 0x%p\n",
+//		    __func__, if_info, ep, id, len, buf);
+
+    if (if_info->md_attr.cap.flags & UCT_MD_FLAG_NEED_MEMH) {
+        status = uct_md_mem_reg(if_info->md, buf, len,
+                                UCT_MD_MEM_ACCESS_RMA, &memh);
+    } else {
+        memh = UCT_MEM_HANDLE_NULL;
+    }
+
+    iov.buffer = buf;
+    iov.length = len;
+    iov.memh   = memh;
+    iov.stride = 0;
+    iov.count  = 1;
+
+    comp.uct_comp.func   = zcopy_completion_cb;
+    comp.uct_comp.count  = 1;
+    comp.uct_comp.status = UCS_OK;
+    comp.md              = if_info->md;
+    comp.memh            = memh;
+
+    if (status == UCS_OK) {
+        do {
+            status = uct_ep_am_zcopy(ep, id, NULL, 0, &iov, 1, 0,
+                                     (uct_completion_t *)&comp);
+            uct_worker_progress(if_info->worker);
+        } while (status == UCS_ERR_NO_RESOURCE);
+
+        if (status == UCS_INPROGRESS) {
+            while (!desc_holder) {
+                /* Explicitly progress outstanding active message request */
+                uct_worker_progress(if_info->worker);
+            }
+            status = UCS_OK;
+        }
+    }
+    desc_holder = (void *)NULL; //set to NULL back before we return
+    return status;
+}
+
 static void print_strings(const char *label, const char *local_str,
                           const char *remote_str, size_t length)
 {
@@ -468,8 +522,8 @@ int parse_cmd(int argc, char * const argv[], cmd_args_t *args)
 
     /* Defaults */
     args->server_port   = 13337;
-    //args->func_am_type  = FUNC_AM_SHORT;
-    args->func_am_type  = FUNC_AM_ZCOPY;
+    args->func_am_type  = FUNC_AM_SHORT;
+    //args->func_am_type  = FUNC_AM_ZCOPY;
     args->test_strlen   = 16;
 
     opterr = 0;
@@ -591,10 +645,10 @@ int sendrecv(int sock, const void *sbuf, size_t slen, void **rbuf)
     return 0;
 }
 
-int dsm_call(char* buf, int len){
-	fprintf(stderr, "[%s] Not supported\n", __func__);
-	return 0;
-}
+static iface_info_t * molecule_if_info;
+static uct_ep_h	      molecule_ep;
+static uint8_t 	      molecule_id;
+
 
 /*
  * Molecule_send_msg
@@ -608,16 +662,22 @@ int molecule_send_msg(char* msg_buf, int len,
     int                 res;
     char *str;
 
+
+    //fprintf(stderr, "[Debug@%s] flag-1\n", __func__);
     assert(len<=8192);
-    str = (char *)mem_type_malloc(len);
+    str = (char *)mem_type_malloc(len+1);
     memcpy(str, msg_buf, len);
     str[len] = '\0';
 
-    status = molecule_do_am_short(if_info, ep, id, len, str);
+    //fprintf(stderr, "[Debug@%s] flag-2\n", __func__);
+    //status = molecule_do_am_short(if_info, ep, id, len, str);
+    status = molecule_do_am_zcopy(if_info, ep, id, len, str);
+    //fprintf(stderr, "[Debug@%s] flag-3\n", __func__);
 
     mem_type_free(str);
     CHKERR_JUMP(UCS_OK != status, "send active msg", err);
-    return;
+    //fprintf(stderr, "[Debug@%s] flag-4", __func__);
+    return len;
 
 err:
     fprintf(stderr, "[Error@MoleculeOS] %s error!\n", __func__);
@@ -656,6 +716,22 @@ int molecule_recv_msg(char* msg_buf, int len,
 	return rdesc->len;
 }
 
+int dsm_call(char* buf, int len){
+	int ret;
+	char dsm_resp_buf[256];
+    	//molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, buf, len);
+	//molecule_recv_msg(molecule_client_remote_ep, molecule_client_ucp_worker, dsm_resp_buf, 4096);
+	//fprintf(stderr, "[MoleculeOS@%s] dsm req:%s, len(%d)\n",__func__, buf, len);
+    	molecule_send_msg(buf, len, molecule_if_info, molecule_ep, molecule_id);
+	molecule_recv_msg(dsm_resp_buf, 256, molecule_if_info, molecule_ep, molecule_id);
+	sscanf(dsm_resp_buf, DSM_RSP_FORMAT, &ret);
+#ifndef MOLECULE_CLEAN
+	fprintf(stderr, "[MoleculeOS@%s] Recv DSM resp: %s\n",
+			    __func__, dsm_resp_buf);
+#endif
+	return ret;
+}
+
 void run_client(cmd_args_t * cmd_args,
 		iface_info_t * if_info,
 		uct_ep_h  ep,
@@ -664,6 +740,14 @@ void run_client(cmd_args_t * cmd_args,
     ucs_status_t        status      = UCS_OK; /* status codes for UCS */
     int                 res;
     int i;
+
+    /* Init and enter loop */
+	molecule_if_info = if_info;
+	molecule_ep = ep;
+	molecule_id = id;
+    while (1){sleep(100);} //loop here
+    //while (1){}
+
 
     char *str = (char *)mem_type_malloc(cmd_args->test_strlen);
     CHKERR_ACTION(str == NULL, "allocate memory",
@@ -688,9 +772,11 @@ void run_client(cmd_args_t * cmd_args,
     for (i=0; i<10; i++){
 	char resp_buf[256];
     	molecule_send_msg("hello world\n", 12, if_info, ep, id);
-	molecule_recv_msg(resp_buf, 256, if_info, ep, id);
+	//molecule_recv_msg(resp_buf, 256, if_info, ep, id);
 	fprintf(stderr,"[%s] got %s\n", __func__, resp_buf);
+	sleep(1);
     }
+    while (1){sleep(100);} //loop here
 
     return;
 err:
@@ -705,7 +791,43 @@ void run_server(cmd_args_t * cmd_args,
     		uint8_t  id)
 {
         recv_desc_t *rdesc;
+	int ret;
 
+    	/* Init and enter loop */
+	molecule_if_info = if_info;
+	molecule_ep = ep;
+	molecule_id = id;
+#if 0
+	{
+		char req_buf[256];
+		molecule_recv_msg(req_buf, 256, if_info, ep, id);
+		fprintf(stderr,"[%s] got %s\n", __func__, req_buf);
+	}
+#endif
+
+#if 1
+    	while (1) {
+    	        char dsm_call_buf[256];
+    	        char dsm_resp_buf[256];
+    	        //molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
+		molecule_recv_msg(dsm_call_buf, 256, if_info, ep, id);
+#ifdef DEBUG
+    	        fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
+    	    		    __func__, dsm_call_buf);
+#endif
+//    		molecule_send_msg("Bye world\n", 10, if_info, ep, id);
+//		continue;
+
+    	        ret = dsm_handlers(dsm_call_buf, 256);
+    	    	
+    	        sprintf(dsm_resp_buf, DSM_RSP_FORMAT, ret);
+
+    		molecule_send_msg(dsm_resp_buf, 256, if_info, ep, id);
+    		//molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_resp_buf, 4096);
+    	}
+#endif
+
+	/* Old loops */
 	while (1) {
 		char req_buf[256];
 		molecule_recv_msg(req_buf, 256, if_info, ep, id);
@@ -789,7 +911,8 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
 #else
     	/* Defaults */
     	cmd_args.server_port   	= 13337;
-    	cmd_args.func_am_type  	= FUNC_AM_SHORT;
+    	//cmd_args.func_am_type  	= FUNC_AM_SHORT;
+    	cmd_args.func_am_type  	= FUNC_AM_ZCOPY;
     	cmd_args.test_strlen   	= 16;
 
 	cmd_args.server_name	= client_target_name;
@@ -803,7 +926,8 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
     CHKERR_JUMP(UCS_OK != status, "init async context", out);
 
     /* Create a worker object */
-    status = uct_worker_create(async, UCS_THREAD_MODE_SINGLE, &if_info.worker);
+    //status = uct_worker_create(async, UCS_THREAD_MODE_SINGLE, &if_info.worker);
+    status = uct_worker_create(async, UCS_THREAD_MODE_SERIALIZED, &if_info.worker);
     CHKERR_JUMP(UCS_OK != status, "create worker", out_cleanup_async);
 
     /* Search for the desired transport */
