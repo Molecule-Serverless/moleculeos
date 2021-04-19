@@ -23,5 +23,5 @@ sleep 2
 
 echo FIFO_LAT_test finished
 
-sudo kill -9 $(pgrep moleculeos)
-sudo kill -9 $(pgrep test-fifo-lat-server)
+sudo kill -9 $(pgrep moleculeos) -f
+sudo kill -9 $(pgrep test-fifo-lat-server) -f

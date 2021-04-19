@@ -61,12 +61,14 @@ example-neighbor-ipc: example-neighboripc-client example-neighboripc-server
 	@echo Read the Server global fifo value, e.g.,1
 	@echo ./example-neighboripc-client -i server_global_fifo_value
 
-tests: test-fifo-lat
+tests: test-fifo-lat test-gSpawn
 	@echo build tests successfully
 	@echo Please follow the scripts/README in each test dir to run them
 
 regression: tests
 	./tests/regression_test.sh
+
+test-gSpawn:
 
 test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
 
