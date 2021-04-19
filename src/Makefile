@@ -68,7 +68,13 @@ tests: test-fifo-lat test-gSpawn
 regression: tests
 	./tests/regression_test.sh
 
-test-gSpawn:
+test-gSpawn: test-gSpawn-lat-client test-gSpawn-lat-child
+
+test-gSpawn-lat-client: tests/gSpawn-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+
+test-gSpawn-lat-child: tests/gSpawn-lat/child.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 
 test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
 
@@ -96,4 +102,4 @@ example-neighboripc-server: examples/neighbor-ipc/server.c ipc.c $(LOCAL_IPC_LIB
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 clean:
-	rm *.o write_lat -f user-client user-server example-ipc-client example-ipc-server example-neighboripc-client example-neighboripc-server global_syscall globalos molecule-rdma moleculeos test-fifo-lat-client test-fifo-lat-server
+	rm *.o write_lat -f user-client user-server example-ipc-client example-ipc-server example-neighboripc-client example-neighboripc-server global_syscall globalos molecule-rdma moleculeos test-fifo-lat-client test-fifo-lat-server test-gSpawn-lat-child test-gSpawn-lat-client

@@ -3,7 +3,7 @@
  * 	Syscall handling for global requests issued by local processes
  * 	Operations implemented for global structures, e.g., global processe and global FIFO
  *
- * 	
+ *
  * 	Author: Dong Du
  * */
 #include<stdio.h>
@@ -14,6 +14,7 @@
 #include<ctype.h>
 #include<string.h>
 #include<sys/shm.h>
+#include<spawn.h>
 
 #include <molecule-ipc.h>
 #include <global_syscall_protocol.h>
@@ -43,6 +44,7 @@ int syscall_fifo_close(int global_fifo);
 int syscall_fifo_read(int global_fifo, int shmid, int length);
 int syscall_fifo_write(int global_fifo, int shmid, int length);
 int syscall_fifo_connect(int global_fifo);
+int syscall_gspawn(int pu_id, int shmid, int argv_len, int envp_len);
 
 //End of syscall handler list
 
@@ -149,6 +151,9 @@ int global_syscall_loop(void)
 		    //FIFO_WRITE
 		    if (strcmp(func_name, "FIFO_WRITE") == 0) {
 			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
+		    } else
+		    if (strcmp(func_name, "GSPAWN") == 0){
+			ret = syscall_gspawn(func_args1, func_args2, func_args3, func_args4);
 		    }
 		    //Default
 		    else{
@@ -180,7 +185,7 @@ int global_syscall_loop(void)
 int global_os_init(int pu_id, int os_port)
 {
 	int i;
-	
+
 	/* FIXME: the initialization should sync with other PUs */
 	for (i=0; i<GLOBAL_PROCESS_LIST_SIZE; i++){
 		global_process_list[i].pu_id = -1;
@@ -396,6 +401,71 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
 	//fprintf(stderr, "[Info@%s] shm:%s\n", __func__, shared_memory);
 	return length;
+}
+
+int syscall_gspawn(int pu_id, int shmid, int argv_len, int envp_len)
+{
+#define MAX_GSPAWN_ARGS_LEN 8
+	char* path;
+	char* argv[MAX_GSPAWN_ARGS_LEN];
+	char* envp[MAX_GSPAWN_ARGS_LEN];
+	char* shared_memory;
+
+	int len, i;
+
+	/* We can directly got the shm through process_list*/
+	shared_memory = global_process_list[shmid].shm;
+
+	if (shared_memory < (char*)0) {
+		//throw("Could not attach segment");
+		fprintf(stderr, "[Error@%s] can not attach segment\n", __func__);
+		return -1;
+	}
+
+	path = shared_memory;
+	len = strlen(path);
+
+	assert(argv_len < MAX_GSPAWN_ARGS_LEN);
+	assert(envp_len < MAX_GSPAWN_ARGS_LEN);
+
+	for (i=0; i<argv_len; i++) {
+		argv[i] = shared_memory+len + 1; //skip '\0' then
+		len += 1 + strlen(argv[i]);
+	}
+
+	for (i=0; i<envp_len; i++) {
+		envp[i] = shared_memory+len + 1; //skip '\0' then
+		len += 1 + strlen(envp[i]);
+	}
+
+	assert(len<256); //FIXME: the checking maybe too late
+
+
+	/* Check whether the syscall can finished locally */
+#ifdef SMARTC
+	if (pu_id != current_pu_id){
+		//TODO: invoke remote gOS to spawn
+		fprintf(stderr, "[MoleculeOS@%s] Syscall not supported\n",
+				__func__);
+		return -1;
+	}
+#endif
+
+	/* Spawn locally */
+	{
+		int status, pid;
+		status = posix_spawn(&pid, path, NULL, NULL, argv, envp);
+		if (status == 0) {
+			//success, do nothing
+		}else{
+			fprintf(stderr, "[MoleculeOS@%s] posix_spawn failed\n",
+					__func__);
+		}
+		return status;
+	}
+
+	//useless return
+	return 0;
 }
 
 /*===================End of Global FIFO */

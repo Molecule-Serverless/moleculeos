@@ -1,4 +1,3 @@
-#if 0
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +11,7 @@
 #include <global_syscall_interfaces.h>
 #include <global_syscall_protocol.h>
 
+#if 0
 typedef struct Local_Arguments {
 	int size;
 	int count;
@@ -240,8 +240,31 @@ void run_cmd(char *cmd)
 	}
 }
 
+void run_cmd_remote(char *cmd)
+{
+	pid_t pid;
+	char *argv[] = {cmd, NULL};
+	char *envp[] = {NULL};
+	int status;
+	printf("Start child: %s\n", cmd);
+	//status = global_spawn(0, &pid, cmd, argv, environ);
+	status = global_spawn(0, &pid, cmd, argv, envp);
+	if (status == 0) {
+		printf("Child pid: %i\n", pid);
+		if (waitpid(pid, &status, 0) != -1) {
+			printf("Child exited with status %i\n", status);
+		} else {
+			perror("waitpid");
+		}
+	} else {
+		printf("posix_spawn: %s\n", strerror(status));
+	}
+}
+
 int main(int argc, char* argv[])
 {
-	run_cmd(argv[1]);
+	register_self_global(GLOBAL_OS_PORT); //server always use the default globalOS
+	//run_cmd(argv[1]);
+	run_cmd_remote(argv[1]);
 	return 0;
 }
