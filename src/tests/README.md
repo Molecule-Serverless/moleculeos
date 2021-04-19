@@ -9,6 +9,12 @@ To run regression test, use the following commnads:
 
 	./regression_test.sh
 
+or You can simply:
+
+	make regression
+
+in moleculeos/src/
+
 Note: any unit test passed should be added to the regression_test
 
 ### Unit test
