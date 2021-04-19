@@ -50,7 +50,14 @@ Note:
 - c: means the count to run test cases (e.g., 100 means run 100 times)
 
 
-	
+### Tests
+
+MoleculeOS includes a set of unit test cases and regression test.
+
+Please refer src/tests/README.md for more info.
+
+Note: ensure you can pass regression test before you issue any PR/MR/updates.
+
 
 
 #### (Example/ipc) User-client and User-server communicate
