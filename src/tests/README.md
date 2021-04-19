@@ -7,7 +7,7 @@
 
 To run regression test, use the following commnads:
 
-	./regression_test.sh
+	./tests/regression_test.sh
 
 or You can simply:
 

@@ -65,6 +65,9 @@ tests: test-fifo-lat
 	@echo build tests successfully
 	@echo Please follow the scripts/README in each test dir to run them
 
+regression: tests
+	./tests/regression_test.sh
+
 test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
 
 test-fifo-lat-client: tests/fifo-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
