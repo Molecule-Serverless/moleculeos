@@ -50,6 +50,10 @@ int dsm_handlers(char* dsm_call_buf, int len)
 				buf_len, dsm_call_buf+buf_offset);
 #endif
 		ret = write_local_fifo(func_args1, dsm_call_buf+buf_offset, buf_len);
+#ifdef DEBUG
+	   	fprintf(stderr, "[%s] func(%s) finished with ret(%d)\n", __func__, func_name,
+				ret);
+#endif
 	}
 	else{
 	   //unsupported
