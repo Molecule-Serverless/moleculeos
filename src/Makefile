@@ -26,11 +26,11 @@ USER_LIB_OBJS = $(patsubst %.c,%.o, $(notdir $(USER_LIB_SOURCES)))
 All: moleculeos
 
 ## A Local Development Version of MoleculeOS
-moleculeos: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
+moleculeos: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -lm -lpthread
 
 ## A Dist Version of MoleculeOS, it's based on DSM to communicate with other PUs
-moleculeos-dist: moleculeos.c global_syscall.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(DSM_SOURCES_files)
+moleculeos-dist: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IPC_LIB_SOURCES) $(DSM_SOURCES_files)
 	#gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC -DMOLECULE_CLEAN 
 	@echo build $@ successfully, please set LD_LIBRARY_PATH, e.g., export LD_LIBRARY_PATH=$(UCX_LIB) before you run
@@ -61,7 +61,7 @@ example-neighbor-ipc: example-neighboripc-client example-neighboripc-server
 	@echo Read the Server global fifo value, e.g.,1
 	@echo ./example-neighboripc-client -i server_global_fifo_value
 
-tests: test-fifo-lat test-gSpawn
+tests: test-fifo-lat test-gSpawn test-fifo-lat-uuid
 	@echo build tests successfully
 	@echo Please follow the scripts/README in each test dir to run them
 
@@ -69,6 +69,8 @@ regression: tests
 	./tests/regression_test.sh
 
 test-gSpawn: test-gSpawn-lat-client test-gSpawn-lat-child
+test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
+test-fifo-lat-uuid: test-fifo-lat-client-uuid test-fifo-lat-server-uuid
 
 test-gSpawn-lat-client: tests/gSpawn-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
@@ -76,18 +78,22 @@ test-gSpawn-lat-client: tests/gSpawn-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 test-gSpawn-lat-child: tests/gSpawn-lat/child.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 
-test-fifo-lat: test-fifo-lat-client test-fifo-lat-server
-
 test-fifo-lat-client: tests/fifo-lat/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+
+test-fifo-lat-server: tests/fifo-lat/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+
+test-fifo-lat-client-uuid: tests/fifo-lat-uuid/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
+	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
+
+test-fifo-lat-server-uuid: tests/fifo-lat-uuid/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 
 moleculeos-userlib: $(USER_LIB_SOURCES)
 	#gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 	gcc -c $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
 	ar rcs libmoleculeos.a $(USER_LIB_OBJS)
-
-test-fifo-lat-server: tests/fifo-lat/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
-	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 
 example-ipc-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
@@ -102,4 +108,4 @@ example-neighboripc-server: examples/neighbor-ipc/server.c ipc.c $(LOCAL_IPC_LIB
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
 
 clean:
-	rm *.o write_lat -f user-client user-server example-ipc-client example-ipc-server example-neighboripc-client example-neighboripc-server global_syscall globalos molecule-rdma moleculeos test-fifo-lat-client test-fifo-lat-server test-gSpawn-lat-child test-gSpawn-lat-client
+	rm *.o write_lat -f user-client user-server example-ipc-client example-ipc-server example-neighboripc-client example-neighboripc-server global_syscall globalos molecule-rdma moleculeos test-fifo-lat-client test-fifo-lat-server test-gSpawn-lat-child test-gSpawn-lat-client test-fifo-lat-client-uuid test-fifo-lat-server-uuid

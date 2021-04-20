@@ -20,6 +20,8 @@
 #include <global_syscall_protocol.h>
 #include <global_syscall.h>
 #include <chos/errno.h>
+#include <hashtable.h>
+#include <common/utility.h>
 
 #define MAXLEN 1024
 #define SERV_PORT 0xfeeb //The reverse of 0xbeef
@@ -34,6 +36,8 @@ static int global_process_now = 0;
 #define GLOBAL_FIFO_LIST_SIZE 4096
 global_fifo_t global_fifo_list[GLOBAL_FIFO_LIST_SIZE];
 static int global_fifo_now = 0;
+HashTable fifo_guuid_table; //global_fifo's global uuid hash table
+
 
 static int current_pu_id = -1;
 static int global_os_port = -1;
@@ -101,7 +105,7 @@ int global_syscall_loop(void)
 		    char func_name[256];
 		    char sys_resp[256];
 		    int ret;
-		    //fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
+		    fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
 
 		    sscanf(buf, SYSCALL_REQ_FORMAT, &client_id, func_name, &func_args1,
 				    &func_args2, &func_args3, &func_args4);
@@ -151,7 +155,7 @@ int global_syscall_loop(void)
 		    //FIFO_WRITE
 		    if (strcmp(func_name, "FIFO_WRITE") == 0) {
 			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
-		    }
+		    } else
 		    if (strcmp(func_name, "FIFO_CONNECT") == 0) {
 			ret = syscall_fifo_connect(func_args1, func_args2);
 		    } else
@@ -163,6 +167,7 @@ int global_syscall_loop(void)
 			    //unsupported
 			ret = -1;
 		    	fprintf(stderr, "[%s] Global syscall(%s) unknown\n", __func__, func_name);
+			exit(-1);
 		    }
 		    /* End of Handler dispatch */
 		   //fprintf(stderr, "[%s] Global syscall(%s) result: %d\n", __func__, func_name, ret);
@@ -204,6 +209,24 @@ int global_os_init(int pu_id, int os_port)
 		//This is a magic value should not used by users
 		global_fifo_list[i].global_uuid = -1;
 	}
+
+	/* Specify the size of the keys and values you want to store once */
+	ht_setup(&fifo_guuid_table, sizeof(int), sizeof(int), 10240); //10K entries
+
+	ht_reserve(&fifo_guuid_table, 1024);
+
+#if 0
+	ht_insert(&table, &x, &y);
+	if (ht_contains(&table, &x)) {
+		y = *(double*)ht_lookup(&table, &x);
+		/* Or use convenience macros */
+		y = HT_LOOKUP_AS(double, &table, &x);
+		printf("%d's value is: %f\n", x, y);
+	}
+	ht_erase(&table, &x);
+	ht_clear(&table);
+	ht_destroy(&table);
+#endif
 
 	//FIXME: different global-OS on different PU has different pu_id
 	current_pu_id = pu_id;
@@ -272,6 +295,10 @@ int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 		global_fifo_list[global_fifo_now].perms = perm;
 		global_fifo_list[global_fifo_now].global_uuid = global_uuid;
 
+		if (global_uuid != -1) {
+			ht_insert(&fifo_guuid_table, &global_uuid, &global_fifo_now);
+		}
+
 	}else{
 		//FIXME: here, we do not fully use the space of the list
 	    	fprintf(stderr, "[Error@%s] global fifo full\n", __func__);
@@ -291,8 +318,15 @@ int syscall_fifo_close(int global_fifo)
 
 int syscall_fifo_connect(int global_uuid, int owner_pid)
 {
-	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
-	return 0;
+	int global_fifo = -1;
+	if (ht_contains(&fifo_guuid_table, &global_uuid)) {
+		global_fifo = *((int*)ht_lookup(&fifo_guuid_table, &global_uuid));
+		printf("[MoleculeOS@%s] global_uuid(%d)'s global_fifo is :%d\n",
+				__func__, global_uuid, global_fifo);
+	}
+	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
+
+	return global_fifo;
 }
 
 

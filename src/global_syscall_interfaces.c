@@ -95,7 +95,7 @@ int global_fifo_init(int local_fifo) //return a global fifo_fd
 }
 
 //return a global fifo_fd
-int global_fifo_connect(int gloabl_uuid)
+int global_fifo_connect(int global_uuid)
 {
 	int global_fifo_id;
 	char buffer[256];
@@ -113,7 +113,7 @@ int global_fifo_connect(int gloabl_uuid)
 /*
  * Same as global_fifo_init, but it uses a uuid for connect
  * */
-int global_fifo_init_uuid(int local_fifo, int gloabl_uuid) //return a global fifo_fd
+int global_fifo_init_uuid(int local_fifo, int global_uuid) //return a global fifo_fd
 {
 	int global_fifo_id;
 	char buffer[256];
