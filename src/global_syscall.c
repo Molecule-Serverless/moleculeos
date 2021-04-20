@@ -39,11 +39,11 @@ static int current_pu_id = -1;
 static int global_os_port = -1;
 
 /* syscall handlers list */
-int syscall_fifo_init(int local_uuid, int owner_pid);
+int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid);
 int syscall_fifo_close(int global_fifo);
 int syscall_fifo_read(int global_fifo, int shmid, int length);
 int syscall_fifo_write(int global_fifo, int shmid, int length);
-int syscall_fifo_connect(int global_fifo);
+int syscall_fifo_connect(int global_uuid, int owner_pid);
 int syscall_gspawn(int pu_id, int shmid, int argv_len, int envp_len);
 
 //End of syscall handler list
@@ -142,7 +142,7 @@ int global_syscall_loop(void)
 		    } else
 		    //FIFO_INIT
 		    if (strcmp(func_name, "FIFO_INIT") == 0) {
-			ret = syscall_fifo_init(func_args1, func_args2);
+			ret = syscall_fifo_init(func_args1, func_args2, func_args3);
 		    } else
 		    //FIFO_READ
 		    if (strcmp(func_name, "FIFO_READ") == 0) {
@@ -151,6 +151,9 @@ int global_syscall_loop(void)
 		    //FIFO_WRITE
 		    if (strcmp(func_name, "FIFO_WRITE") == 0) {
 			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
+		    }
+		    if (strcmp(func_name, "FIFO_CONNECT") == 0) {
+			ret = syscall_fifo_connect(func_args1, func_args2);
 		    } else
 		    if (strcmp(func_name, "GSPAWN") == 0){
 			ret = syscall_gspawn(func_args1, func_args2, func_args3, func_args4);
@@ -197,6 +200,9 @@ int global_os_init(int pu_id, int os_port)
 	for (i=0; i<GLOBAL_FIFO_LIST_SIZE; i++) {
 		//we use pu_id to indicate whether this is a valid fifo
 		global_fifo_list[i].pu_id = -1;
+
+		//This is a magic value should not used by users
+		global_fifo_list[i].global_uuid = -1;
 	}
 
 	//FIXME: different global-OS on different PU has different pu_id
@@ -247,7 +253,7 @@ int is_global_fifo_local(int global_fifo)
 	return global_fifo_list[global_fifo].pu_id == current_pu_id;
 }
 
-int syscall_fifo_init(int local_uuid, int owner_pid)
+int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 {
 	int ret;
 
@@ -260,12 +266,11 @@ int syscall_fifo_init(int local_uuid, int owner_pid)
 		global_fifo_list[global_fifo_now].global_id = global_fifo_now;
 		ret = global_process_now;
 
-
-
 		global_fifo_list[global_fifo_now].local_uuid = local_uuid;
 		global_fifo_list[global_fifo_now].owner_pid = owner_pid;
 		//global_fifo_list[global_fifo_now].perms = {0x3, owner_pid};
 		global_fifo_list[global_fifo_now].perms = perm;
+		global_fifo_list[global_fifo_now].global_uuid = global_uuid;
 
 	}else{
 		//FIXME: here, we do not fully use the space of the list
@@ -284,7 +289,7 @@ int syscall_fifo_close(int global_fifo)
 	return 0;
 }
 
-int syscall_fifo_connect(int global_fifo)
+int syscall_fifo_connect(int global_uuid, int owner_pid)
 {
 	fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
 	return 0;

@@ -86,7 +86,41 @@ int global_fifo_init(int local_fifo) //return a global fifo_fd
 	fprintf(stderr, "[%s] invoked\n", __func__);
 
 	//fifo_init(local_fifo);
-	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_INIT", local_fifo, 0, 0, 0);
+	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_INIT", local_fifo, self_global_id, -1, 0);
+	global_fifo_id = invoke_global_syscall(global_OS_id, buffer);
+
+	fprintf(stderr, "[%s] resp: global_fifo_id: %d\n", __func__, global_fifo_id);
+
+	return global_fifo_id;
+}
+
+//return a global fifo_fd
+int global_fifo_connect(int gloabl_uuid)
+{
+	int global_fifo_id;
+	char buffer[256];
+	fprintf(stderr, "[%s] invoked\n", __func__);
+
+	//fifo_init(local_fifo);
+	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_CONNECT", global_uuid, self_global_id, -1, 0);
+	global_fifo_id = invoke_global_syscall(global_OS_id, buffer);
+
+	fprintf(stderr, "[%s] resp: global_fifo_id: %d\n", __func__, global_fifo_id);
+
+	return global_fifo_id;
+
+}
+/*
+ * Same as global_fifo_init, but it uses a uuid for connect
+ * */
+int global_fifo_init_uuid(int local_fifo, int gloabl_uuid) //return a global fifo_fd
+{
+	int global_fifo_id;
+	char buffer[256];
+	fprintf(stderr, "[%s] invoked\n", __func__);
+
+	//fifo_init(local_fifo);
+	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_INIT", local_fifo, self_global_id, global_uuid, 0);
 	global_fifo_id = invoke_global_syscall(global_OS_id, buffer);
 
 	fprintf(stderr, "[%s] resp: global_fifo_id: %d\n", __func__, global_fifo_id);

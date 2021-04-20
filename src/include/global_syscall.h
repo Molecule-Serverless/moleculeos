@@ -44,6 +44,7 @@ typedef struct global_fifo{
 	//int local_fifo; //The fifo id in the owner process
 	int local_uuid; //The uuid of the fifo, i.e., the name
 	int global_id; //The global fifo id
+	int global_uuid; //The uuid of global fifo, which is used in gFIFO_connect
 	perm_container_t perms; //The containers that can access this FIFO
 } global_fifo_t;
 

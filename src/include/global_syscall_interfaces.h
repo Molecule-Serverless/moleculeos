@@ -17,6 +17,8 @@ int global_fifo_init(int local_fifo); //return a global fifo_fd
 int global_fifo_close(int global_fifo); //close a global fifo_fd
 int global_fifo_read(int global_fifo, char*buf, int len); //read from a global fifo_fd
 int global_fifo_write(int global_fifo, char*buf, int len); //write to a global fifo_fd
+int global_fifo_init_uuid(int local_fifo, int gloabl_uuid); //return a global fifo_fd
+int global_fifo_connect(int gloabl_uuid); //return a global fifo_fd
 
 /* Permission containers Ops */
 int global_grant_perm(int global_pid, int global_fd, int perm); //grant perm of a fifo to another process
