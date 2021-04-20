@@ -90,10 +90,21 @@ test-fifo-lat-client-uuid: tests/fifo-lat-uuid/client.c ipc.c $(LOCAL_IPC_LIB_SO
 test-fifo-lat-server-uuid: tests/fifo-lat-uuid/server.c ipc.c $(LOCAL_IPC_LIB_SOURCES) $(SYSCALL_RUNTIME_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
 
-moleculeos-userlib: $(USER_LIB_SOURCES)
-	#gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread -DMOLECULE_CLEAN
-	gcc -c $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
-	ar rcs libmoleculeos.a $(USER_LIB_OBJS)
+userlib: $(USER_LIB_SOURCES)
+	@rm ./moleculeOS-userlib/ -rf
+	@mkdir ./moleculeOS-userlib
+	@cp ipc.c local-ipc $(SYSCALL_RUNTIME_LIB_SOURCES) ./moleculeOS-userlib/ -r
+	@mkdir -p ./moleculeOS-userlib/include
+	@cp include/global_syscall_interfaces.h ./moleculeOS-userlib/include/
+	@cp include/global_syscall_protocol.h ./moleculeOS-userlib/include/
+	@cp include/global_syscall_runtime.h ./moleculeOS-userlib/include/
+	@cp include/molecule-ipc.h ./moleculeOS-userlib/include/
+	@cp include/chos ./moleculeOS-userlib/include/ -r
+	@gcc -c $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
+	@ar rcs libmoleculeos.a $(USER_LIB_OBJS)
+	@echo Build Userlib, static lib is libmoleculeos.a
+	@echo You can also use source code in moleculeOS-userlib, and include files: -ImoleculeOS-userlib/include and -ImoleculeOS-userlib/local-ipc
+
 
 example-ipc-client: examples/ipc/client.c ipc.c $(LOCAL_IPC_LIB_SOURCES)
 	gcc -o $@ $^ -Ilocal-ipc/ -Iinclude/ -lm -lpthread
