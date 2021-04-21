@@ -38,8 +38,10 @@ int dsm_handlers(char* dsm_call_buf, int len)
 	fprintf(stderr, "[%s] DSM handlers invoked: %s\n", __func__, dsm_call_buf);
 #endif
 
+	fprintf(stderr, "[MoleculeOS Info@%s] got dsm_req: %u us\n", __func__, now()/1000);
 	ret = sscanf(dsm_call_buf, DSM_REQ_FORMAT_CALLEE, &client_id, func_name, &func_args1,
 			    &func_args2, &func_args3, &func_args4, &buf_len, &buf_offset);
+	fprintf(stderr, "[MoleculeOS Info@%s] after sscan req: %u us\n", __func__, now()/1000);
 
 	//assert(ret + buf_len < len);
 	assert(buf_offset + buf_len < len);
@@ -61,5 +63,6 @@ int dsm_handlers(char* dsm_call_buf, int len)
 	   	fprintf(stderr, "[%s] DSM handlers (%s) unknown\n", __func__, func_name);
 	}
 	
+	fprintf(stderr, "[MoleculeOS Info@%s] dsm handler ready to return results: %u us\n", __func__, now()/1000);
 	return ret;
 }

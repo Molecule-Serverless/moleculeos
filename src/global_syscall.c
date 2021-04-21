@@ -22,6 +22,7 @@
 #include <chos/errno.h>
 #include <hashtable.h>
 #include <common/utility.h>
+#include <common/benchmarks.h>
 
 #define MAXLEN 1024
 #define SERV_PORT 0xfeeb //The reverse of 0xbeef
@@ -105,7 +106,7 @@ int global_syscall_loop(void)
 		    char func_name[256];
 		    char sys_resp[256];
 		    int ret;
-		    fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
+		    //fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
 
 		    sscanf(buf, SYSCALL_REQ_FORMAT, &client_id, func_name, &func_args1,
 				    &func_args2, &func_args3, &func_args4);
@@ -154,7 +155,9 @@ int global_syscall_loop(void)
 		    } else
 		    //FIFO_WRITE
 		    if (strcmp(func_name, "FIFO_WRITE") == 0) {
+			fprintf(stderr, "[MoleculeOS Info@%s] before write: %u us\n", __func__, now()/1000);
 			ret = syscall_fifo_write(func_args1, func_args2, func_args3);
+			fprintf(stderr, "[MoleculeOS Info@%s] after write: %u us\n", __func__, now()/1000);
 		    } else
 		    if (strcmp(func_name, "FIFO_CONNECT") == 0) {
 			ret = syscall_fifo_connect(func_args1, func_args2);
@@ -365,7 +368,9 @@ int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 	memcpy(buffer+ret, shared_memory, length);
 	buffer[ret+length] = '\0';
 
+	fprintf(stderr, "[MoleculeOS Info@%s] before issue dsm_call: %u us\n", __func__, now()/1000);
 	dsm_call(buffer, 256);
+	fprintf(stderr, "[MoleculeOS Info@%s] after issue dsm_call: %u us\n", __func__, now()/1000);
 
 	return 0;
 }
