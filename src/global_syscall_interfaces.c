@@ -251,9 +251,9 @@ int global_grant_perm(int global_pid, int global_fd, int perm) //grant perm of a
 //We do not allow file_actions and attrp in gspawn
 int global_spawn(int pu_id, //pu_id is the target pu of spawn
 		int *global_pid,
-		const char *restrict path,
-		char *const argv[restrict],
-		char* const envp[restrict])
+		const char * path,
+		char *const argv[],
+		char* const envp[])
 {
 	int ret;
 	char buffer[256];
