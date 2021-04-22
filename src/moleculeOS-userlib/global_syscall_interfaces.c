@@ -47,9 +47,11 @@ int register_self_global(int os_port) //return a global pid
 	 * */
 	//we use the self_global_id as shm_uuid, which is supposed managed by globalOS
 	shm_uuid = self_global_id;
-	sprintf(shmid_string, "%d", shm_uuid);
+//	sprintf(shmid_string, "%d", shm_uuid);
+	sprintf(shmid_string, "/tmp/fifo_dir/shm-%d", shm_uuid);
 	segment_key = generate_key(shmid_string);
-	segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+	//segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+	segment_id = shmget(segment_key, 4096, 0666); //only allow G-OS to create shm
 
 	if (segment_id < 0) {
 		throw("Could not get segment");
@@ -228,6 +230,8 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	assert(len<=4096);
 
 	memcpy(shared_memory, buf, len);
+	fprintf(stderr, "[Runtime@%s] shared_mem: %s, buf:%s, len:%d\n",
+			__func__, shared_memory, buf, len);
 
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_WRITE", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
