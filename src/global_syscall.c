@@ -121,6 +121,7 @@ int global_syscall_loop(void)
 				int segment_id;
 				int shm_uuid = 1;
 				char shmid_string[256];
+				FILE * shm_fp;
 
 			    	global_process_list[global_process_now].pu_id = current_pu_id;
 			    	global_process_list[global_process_now].local_pid = func_args1;
@@ -130,6 +131,10 @@ int global_syscall_loop(void)
 				/* establish shm now */
 				shm_uuid = ret; //global_process_now as uuid
 				sprintf(shmid_string, "/tmp/fifo_dir/shm-%d", shm_uuid);
+				/*Create a shm file now */
+				shm_fp = fopen(shmid_string, "ab+");
+				fclose(shm_fp);
+
 				segment_key = generate_key(shmid_string);
 				fprintf(stderr, "[%s] shmid_string:%s segment_id: %d\n", __func__, shmid_string, segment_key);
 				segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
@@ -428,6 +433,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	}
 	//*((int *)shared_memory) = 0xbeef;
 	shared_memory[length] = '\0';
+	fprintf(stderr, "[MoleculeOS@%s] shared_mem:%s, leng:%d\n", __func__, shared_memory, length);
 
 	/* Check whether the syscall can finished locally */
 #ifdef SMARTC
