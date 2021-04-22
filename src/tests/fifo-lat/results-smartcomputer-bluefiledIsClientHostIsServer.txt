@@ -1,0 +1,9 @@
+[register_self_global] invoked
+[register_self_global] resp: self_global_id: 9
+[Client] Before fifo_init
+[fifo_init] fifo_path: /tmp/ipc_fifo_id-9000
+[fifo_init] mkfifo success
+[fifo_init] open success
+[global_fifo_init] invoked
+[global_fifo_init] resp: global_fifo_id: 9
+test-fifo-lat-client: global_syscall_runtime.c:75: invoke_global_syscall: Assertion `n>0' failed.
