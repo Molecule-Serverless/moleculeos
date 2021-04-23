@@ -90,16 +90,16 @@ void local_parse_arguments(Local_Arguments *arguments, int argc, char *argv[]) {
 }
 
 #ifdef SMARTC
-/* 
+/*
  * The entrypoint of the globalOS DSM layer, which handles requests from remote globalOS
  * */
 
 char dsm_master_addr[48]; //the addr of dsm master
-char dev_name[48]; 
+char dev_name[48];
 char tl_name[48];
 		//uct_molecule_dsm_init(dsm_master_addr, 0, "enp125s0f0", "tcp");
 /*
- * Example: 
+ * Example:
  * 	dev_name = enp125s0f0, tl_nam=tcp
  * 	dev_name = mlx5_1:1, tl_nam=ud_mlx5
  *
@@ -118,7 +118,7 @@ void * globalOS_DSM(void)
 		uct_molecule_dsm_init(NULL, 0, dev_name, tl_name);
 	}
 	else{
-		//FIXME: how should we know the addr of server? 
+		//FIXME: how should we know the addr of server?
 		//molecule_dsm_init("127.0.0.1");
         	fprintf(stderr, "[MoleculeOS] Master at %s, work on (%s/%s)\n", dsm_master_addr,
 				dev_name, tl_name);
@@ -154,7 +154,7 @@ void * globalOS_DSM_client(void)
 	//molecule_dsm_init("127.0.0.1");
         fprintf(stderr, "[MoleculeOS] Master at %s\n", dsm_master_addr);
 
-	/* Note: 1 - pu_id is the remote's pu_id 
+	/* Note: 1 - pu_id is the remote's pu_id
 	 * FIXME: this imp can not support >2 PUs!
 	 * */
 	molecule_dsm_init(dsm_master_addr, 1 - pu_id);
@@ -165,6 +165,23 @@ void * globalOS_DSM_client(void)
 }
 #endif //if-1
 #endif //SMARTC
+
+/*
+ * Print necessary usage info (print during startup)
+ * */
+void os_info(void)
+{
+	/*
+	 * FIXME: Do we have a better way to add colors to our output?
+	 * */
+	fprintf(stderr, "\033[40;31m [MoleculeOS] OS Info Begin===== \033[0m\n");
+	fprintf(stderr, "\033[40;31m 1. Please ensure you have created /tmp/fifo_dir directory manually \033[0m \n");
+	fprintf(stderr, "\033[40;31m 2. Please check the PU id to ensure the value is valid!\033[0m \n");
+	fprintf(stderr, "\033[40;31m 3. If you want to kill MoleculeOS, it would be better to kill processes connected first :)\033[0m \n");
+
+	fprintf(stderr, "\033[40;31m Last. If you have any suggestions or meet issues, contact Dong Du (Dd_nirvana@sjtu.edu.cn)\033[0m \n");
+	fprintf(stderr, "\033[40;31m [MoleculeOS] OS Info End  =====\033[0m \n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -198,6 +215,8 @@ int main(int argc, char *argv[])
 	}
 
 #endif
+	/* Dump necessary OS info now */
+	os_info();
 
 	/* Loop1: wait for syscall events */
 	global_syscall_loop();
