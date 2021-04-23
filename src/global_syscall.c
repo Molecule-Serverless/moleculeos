@@ -122,6 +122,7 @@ int global_syscall_loop(void)
 				int segment_id;
 				int shm_uuid = 1;
 				char shmid_string[256];
+				FILE * shm_fp;
 
 			    	global_process_list[global_process_now].pu_id = current_pu_id;
 			    	global_process_list[global_process_now].local_pid = func_args1;
@@ -130,8 +131,13 @@ int global_syscall_loop(void)
 
 				/* establish shm now */
 				shm_uuid = ret; //global_process_now as uuid
-				sprintf(shmid_string, "%d", shm_uuid);
+				sprintf(shmid_string, "/tmp/fifo_dir/shm-%d", shm_uuid);
+				/*Create a shm file now */
+				shm_fp = fopen(shmid_string, "ab+");
+				fclose(shm_fp);
+
 				segment_key = generate_key(shmid_string);
+				fprintf(stderr, "[%s] shmid_string:%s segment_id: %d\n", __func__, shmid_string, segment_key);
 				segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
 
 				if (segment_id < 0) {
@@ -282,7 +288,7 @@ int is_global_fifo_local(int global_fifo)
 int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 {
 	int ret;
-
+	printf("syscall_fifo_connect: local_uuid: %d, global_uuid: %d\n", local_uuid, global_uuid);
 	global_fifo_now = (global_fifo_now+1) % GLOBAL_FIFO_LIST_SIZE;
 
 	if (global_fifo_list[global_fifo_now].pu_id == -1){
@@ -299,6 +305,7 @@ int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 		global_fifo_list[global_fifo_now].global_uuid = global_uuid;
 
 		if (global_uuid != -1) {
+
 			ht_insert(&fifo_guuid_table, &global_uuid, &global_fifo_now);
 		}
 
@@ -326,6 +333,10 @@ int syscall_fifo_connect(int global_uuid, int owner_pid)
 		global_fifo = *((int*)ht_lookup(&fifo_guuid_table, &global_uuid));
 		printf("[MoleculeOS@%s] global_uuid(%d)'s global_fifo is :%d\n",
 				__func__, global_uuid, global_fifo);
+	}
+	else
+	{
+		printf("[syscall_fifo_connect]: not find, uuid: %d, pid: %d\n", global_uuid, owner_pid);
 	}
 	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);
 
@@ -382,6 +393,8 @@ int write_local_fifo(int global_fifo, char* shared_memory, int length)
 	int ret;
 	//TODO: check global_fifo to avoid attacks
 	local_uuid = global_fifo_list[global_fifo].local_uuid;
+	fprintf(stderr, "[MoleculeOS@%s] local_uuid: %d, content: %s\n", __func__,
+	local_uuid, (char*)shared_memory);
 	local_fifo = fifo_connect(local_uuid);
 	ret = fifo_write(local_fifo, (char*)shared_memory, length);
 	fifo_close(local_fifo);
@@ -413,6 +426,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 
 	shared_memory = (char*)shmat(segment_id, NULL, 0);
 #else
+	fprintf(stderr, "[MoleculeOS@%s] shmid: %x\n", __func__, shmid);
 	/* We can directly got the shm through process_list*/
 	shared_memory = global_process_list[shmid].shm;
 #endif
@@ -424,6 +438,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	}
 	//*((int *)shared_memory) = 0xbeef;
 	shared_memory[length] = '\0';
+	fprintf(stderr, "[MoleculeOS@%s] shared_mem:%s, leng:%d\n", __func__, shared_memory, length);
 
 	/* Check whether the syscall can finished locally */
 #ifdef SMARTC

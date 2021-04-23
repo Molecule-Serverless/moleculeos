@@ -21,7 +21,7 @@
 
 //#define FIFO_PATH_TEMPLATE "/tmp/ipc_fifo_id-%d"
 //#define FIFO_PATH_TEMPLATE "/env/ipc_fifo_id-%d"
-#define FIFO_PATH_TEMPLATE "/tmp/ipc_fifo_id-%d"
+#define FIFO_PATH_TEMPLATE "/tmp/fifo_dir/ipc_fifo_id-%d"
 
 #define FIFO_MSG_FORMAT "id: %d func:%s args1:%d args2:%d args3:%d args4:%d"
 
