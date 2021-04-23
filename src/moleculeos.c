@@ -22,6 +22,7 @@
 typedef struct Local_Arguments {
 	int pu_id; //the pu_id of this pu
 	int os_port; //the port of this global OS
+	int shm_channel; //whether the globalOS uses shm to communicate with client
 #ifdef SMARTC
 	char dsm_master_addr[48]; //the addr of dsm master
 	char dev_name[48]; //the addr of dsm master
