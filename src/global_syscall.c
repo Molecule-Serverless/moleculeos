@@ -43,6 +43,7 @@ static int current_pu_id = -1;
 static int global_os_port = -1;
 
 /* syscall handlers list */
+int syscall_register_global(int local_pid);
 int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid);
 int syscall_fifo_close(int global_fifo);
 int syscall_fifo_read(int global_fifo, int shmid, int length);
@@ -105,7 +106,7 @@ int global_syscall_loop(void)
 		    char func_name[256];
 		    char sys_resp[256];
 		    int ret;
-		    fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
+		    //fprintf(stderr, "[%s] Global syscall invoked: %s\n", __func__, buf);
 
 		    sscanf(buf, SYSCALL_REQ_FORMAT, &client_id, func_name, &func_args1,
 				    &func_args2, &func_args3, &func_args4);
@@ -115,40 +116,7 @@ int global_syscall_loop(void)
 		    /*Handler dispatch */
 		    //RegisterSelfGlobal
 		    if (strcmp(func_name, "RegisterSelfGlobal") == 0) {
-			    global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
-			    if (global_process_list[global_process_now].local_pid<0){
-				key_t segment_key;
-				int segment_id;
-				int shm_uuid = 1;
-				char shmid_string[256];
-				FILE * shm_fp;
-
-			    	global_process_list[global_process_now].pu_id = current_pu_id;
-			    	global_process_list[global_process_now].local_pid = func_args1;
-			    	global_process_list[global_process_now].global_pid = global_process_now;
-				ret = global_process_now;
-
-				/* establish shm now */
-				shm_uuid = ret; //global_process_now as uuid
-				sprintf(shmid_string, "/tmp/fifo_dir/shm-%d", shm_uuid);
-				/*Create a shm file now */
-				shm_fp = fopen(shmid_string, "ab+");
-				fclose(shm_fp);
-
-				segment_key = generate_key(shmid_string);
-				fprintf(stderr, "[%s] shmid_string:%s segment_id: %d\n", __func__, shmid_string, segment_key);
-				segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
-
-				if (segment_id < 0) {
-					throw("Could not get segment");
-				}
-
-			    	global_process_list[global_process_now].shm = shmat(segment_id, NULL, 0);
-			    }else{
-				//FIXME: here, we do not fully use the space of the process_list
-		    		fprintf(stderr, "[Error@%s] global process full\n", __func__);
-				ret = -1;
-			    }
+			ret = syscall_register_global(func_args1);
 		    } else
 		    //FIFO_INIT
 		    if (strcmp(func_name, "FIFO_INIT") == 0) {
@@ -281,11 +249,59 @@ int is_global_fifo_local(int global_fifo)
 
 	return global_fifo_list[global_fifo].pu_id == current_pu_id;
 }
+int syscall_register_global(int local_pid)
+{
+	int ret;
+	global_process_now = (global_process_now+1)%GLOBAL_PROCESS_LIST_SIZE;
+    	if (global_process_list[global_process_now].local_pid<0){
+    	    key_t segment_key;
+    	    int segment_id;
+    	    int shm_uuid = 1;
+    	    char shmid_string[256];
+    	    FILE * shm_fp;
+
+    		global_process_list[global_process_now].pu_id = current_pu_id;
+    		global_process_list[global_process_now].local_pid = local_pid;
+    		global_process_list[global_process_now].global_pid = global_process_now;
+    	    ret = global_process_now;
+
+    	    /* establish shm now */
+    	    shm_uuid = ret; //global_process_now as uuid
+    	    sprintf(shmid_string, "/tmp/fifo_dir/shm-%d\0", shm_uuid);
+    	    /*Create a shm file now */
+    	    shm_fp = fopen(shmid_string, "ab+");
+    	    if (!shm_fp){
+		    fprintf(stderr, "[MoleculeOS@%s] create shm for process(%d) failed\n",
+				    __func__, local_pid);
+		    //FIXME: we should have a better way to release the entry
+    		    global_process_list[global_process_now].local_pid = -1;
+		    return -1;
+    	    }
+    	    fclose(shm_fp);
+
+    	    segment_key = generate_key(shmid_string);
+    	    fprintf(stderr, "[%s] shmid_string:%s segment_id: %d\n", __func__, shmid_string, segment_key);
+    	    segment_id = shmget(segment_key, 4096, IPC_CREAT | 0666);
+
+    	    if (segment_id < 0) {
+    	    	throw("Could not get segment");
+    	    }
+
+    		global_process_list[global_process_now].shm = shmat(segment_id, NULL, 0);
+    	}else{
+    	    //FIXME: here, we do not fully use the space of the process_list
+    	    fprintf(stderr, "[Error@%s] global process full\n", __func__);
+    	    ret = -1;
+    	}
+
+	return ret;
+
+}
 
 int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 {
 	int ret;
-	printf("syscall_fifo_connect: local_uuid: %d, global_uuid: %d\n", local_uuid, global_uuid);
+	//printf("syscall_fifo_connect: local_uuid: %d, global_uuid: %d\n", local_uuid, global_uuid);
 	global_fifo_now = (global_fifo_now+1) % GLOBAL_FIFO_LIST_SIZE;
 
 	if (global_fifo_list[global_fifo_now].pu_id == -1){
@@ -388,8 +404,8 @@ int write_local_fifo(int global_fifo, char* shared_memory, int length)
 	int ret;
 	//TODO: check global_fifo to avoid attacks
 	local_uuid = global_fifo_list[global_fifo].local_uuid;
-	fprintf(stderr, "[MoleculeOS@%s] local_uuid: %d, content: %s\n", __func__,
-	local_uuid, (char*)shared_memory);
+	//fprintf(stderr, "[MoleculeOS@%s] local_uuid: %d, content: %s\n", __func__,
+	//	local_uuid, (char*)shared_memory);
 	local_fifo = fifo_connect(local_uuid);
 	ret = fifo_write(local_fifo, (char*)shared_memory, length);
 	fifo_close(local_fifo);
@@ -421,7 +437,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 
 	shared_memory = (char*)shmat(segment_id, NULL, 0);
 #else
-	fprintf(stderr, "[MoleculeOS@%s] shmid: %x\n", __func__, shmid);
+	//fprintf(stderr, "[MoleculeOS@%s] shmid: %x\n", __func__, shmid);
 	/* We can directly got the shm through process_list*/
 	shared_memory = global_process_list[shmid].shm;
 #endif
@@ -433,7 +449,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 	}
 	//*((int *)shared_memory) = 0xbeef;
 	shared_memory[length] = '\0';
-	fprintf(stderr, "[MoleculeOS@%s] shared_mem:%s, leng:%d\n", __func__, shared_memory, length);
+	//fprintf(stderr, "[MoleculeOS@%s] shared_mem:%s, leng:%d\n", __func__, shared_memory, length);
 
 	/* Check whether the syscall can finished locally */
 #ifdef SMARTC
