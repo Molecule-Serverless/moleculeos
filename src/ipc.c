@@ -72,6 +72,7 @@ int fifo_server_setup(int uuid) {
 
 	/* Open a fifo */
 	if ((fifo_fd = open(fifo_path, O_RDONLY)) <0){
+		fprintf(stderr, "Error@%s, fifo_path:%s\n", __func__, fifo_path);
 		throw("Error opening FIFO in client\n");
 	}
 	return fifo_fd;
@@ -87,6 +88,7 @@ int fifo_connect(int uuid) //connect to fifo-uuid, return a fifo_fd
 
 	/* Open a fifo (of a server), write-only */
 	if ((fifo_fd = open(fifo_path, O_WRONLY)) <0){
+		fprintf(stderr, "Error@%s, fifo_path:%s\n", __func__, fifo_path);
 		throw("Error opening FIFO in client\n");
 	}
 	return fifo_fd;
