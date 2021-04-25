@@ -7,6 +7,9 @@ common/signals.c \
 common/sockets.c \
 common/utility.c 
 
+SHM_GSYSCALL_CHANNEL_SOURCES = shm-gsyscall-channel/shm_gsyscall_server.cc
+SHM_GSYSCALL_CHANNEL_OBJS = shm_gsyscall_server.o
+
 #DSM_SOURCES_files= inter-device/molecule_dsm.c\
 #		   inter-device/dsm_handlers.c
 
@@ -26,14 +29,17 @@ USER_LIB_OBJS = $(patsubst %.c,%.o, $(notdir $(USER_LIB_SOURCES)))
 All: moleculeos
 
 ## A Local Development Version of MoleculeOS
-moleculeos: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IPC_LIB_SOURCES)
-	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -lm -lpthread
+moleculeos: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IPC_LIB_SOURCES) $(SHM_GSYSCALL_CHANNEL_OBJS)
+	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -lm -lpthread -lstdc++ -lrt
 
 ## A Dist Version of MoleculeOS, it's based on DSM to communicate with other PUs
 moleculeos-dist: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IPC_LIB_SOURCES) $(DSM_SOURCES_files)
 	#gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC -DMOLECULE_CLEAN 
 	@echo build $@ successfully, please set LD_LIBRARY_PATH, e.g., export LD_LIBRARY_PATH=$(UCX_LIB) before you run
+
+$(SHM_GSYSCALL_CHANNEL_OBJS):  $(SHM_GSYSCALL_CHANNEL_SOURCES)
+	g++ -std=c++11 -O3 -DUSE_SHM=1 -c $^ -o $@ -Iinclude -lrt
 
 molecule-rdma: molecule-rdma.c $(RDMA_LIB_SOURCES)
 	gcc -o $@ $^ -Irdma-lib/ -libumad -lm -lm  -lmlx5 -lrdmacm -libverbs -lpthread  -lresolv -D_GNU_SOURCE

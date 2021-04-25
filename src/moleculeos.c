@@ -178,6 +178,7 @@ void os_info(void)
 	fprintf(stderr, "\033[40;31m 1. Please ensure you have created /tmp/fifo_dir directory manually \033[0m \n");
 	fprintf(stderr, "\033[40;31m 2. Please check the PU id to ensure the value is valid!\033[0m \n");
 	fprintf(stderr, "\033[40;31m 3. If you want to kill MoleculeOS, it would be better to kill processes connected first :)\033[0m \n");
+	fprintf(stderr, "\033[40;31m 4. Please run MoleculeOS as root (e.g., sudo ./moleculeos -i 0), just give an OS the rights of OSes\033[0m \n");
 
 	fprintf(stderr, "\033[40;31m Last. If you have any suggestions or meet issues, contact Dong Du (Dd_nirvana@sjtu.edu.cn)\033[0m \n");
 	fprintf(stderr, "\033[40;31m [MoleculeOS] OS Info End  =====\033[0m \n");
@@ -217,6 +218,9 @@ int main(int argc, char *argv[])
 #endif
 	/* Dump necessary OS info now */
 	os_info();
+
+	//sayhello("hello form C to C++");
+
 
 	/* Loop1: wait for syscall events */
 	global_syscall_loop();
