@@ -339,6 +339,19 @@ int syscall_fifo_close(int global_fifo)
 	return 0;
 }
 
+int local_fifo_connect(int global_uuid)
+{
+	int global_fifo = -1;
+	if (ht_contains(&fifo_guuid_table, &global_uuid)) {
+		global_fifo = *((int*)ht_lookup(&fifo_guuid_table, &global_uuid));
+		printf("[MoleculeOS@%s] global_uuid(%d)'s global_fifo is :%d\n",
+				__func__, global_uuid, global_fifo);
+		return global_fifo;
+	}else 
+		return -1;
+
+}
+
 int syscall_fifo_connect(int global_uuid, int owner_pid)
 {
 	int global_fifo = -1;
@@ -349,6 +362,20 @@ int syscall_fifo_connect(int global_uuid, int owner_pid)
 	}
 	else
 	{
+#ifdef SMARTC
+		/*If we support remote cases, this must be registerred by remote ones! */
+		char buffer[256];
+		int ret;
+		ret = sprintf(buffer, DSM_REQ_FORMAT, 0, "FIFOCONNECT", global_uuid, 0, 0, 0, 0);
+		assert(ret<256);
+		buffer[ret] = '\0';
+
+		ret = dsm_call(buffer, 256);
+		if (ret >0) {
+			ht_insert(&fifo_guuid_table, &global_uuid, &ret); //cache uuid now
+		}
+		return ret;
+#endif
 		printf("[syscall_fifo_connect]: not find, uuid: %d, pid: %d\n", global_uuid, owner_pid);
 	}
 	//fprintf(stderr, "[Warning@%s] syscall not supported\n", __func__);

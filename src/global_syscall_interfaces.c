@@ -230,8 +230,8 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	assert(len<=4096);
 
 	memcpy(shared_memory, buf, len);
-	fprintf(stderr, "[Runtime@%s] shared_mem: %s, buf:%s, len:%d\n",
-			__func__, shared_memory, buf, len);
+//	fprintf(stderr, "[Runtime@%s] shared_mem: %s, buf:%s, len:%d\n",
+//			__func__, shared_memory, buf, len);
 
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_WRITE", global_fifo, shm_uuid, len, 0);
 	ret = invoke_global_syscall(global_OS_id, buffer);
@@ -252,9 +252,9 @@ int global_grant_perm(int global_pid, int global_fd, int perm) //grant perm of a
 //We do not allow file_actions and attrp in gspawn
 int global_spawn(int pu_id, //pu_id is the target pu of spawn
 		int *global_pid,
-		const char *restrict path,
-		char *const argv[restrict],
-		char* const envp[restrict])
+		const char * path,
+		char *const argv[],
+		char* const envp[])
 {
 	int ret;
 	char buffer[256];

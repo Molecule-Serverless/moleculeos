@@ -54,6 +54,11 @@ int dsm_handlers(char* dsm_call_buf, int len)
 	   	fprintf(stderr, "[%s] func(%s) finished with ret(%d)\n", __func__, func_name,
 				ret);
 #endif
+	} else if (strcmp(func_name, "FIFOCONNECT") == 0) {
+		//ret = sprintf(buffer, DSM_REQ_FORMAT, 0, "FIFOCONNECT", global_uuid, 0, 0, 0, 0);
+		ret = local_fifo_connect(func_args1);
+	   	fprintf(stderr, "[%s] func(%s) finished with ret(%d)\n", __func__, func_name,
+				ret);
 	}
 	else{
 	   //unsupported
