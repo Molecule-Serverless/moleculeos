@@ -63,7 +63,22 @@ typedef struct {
     uct_mem_h           memh;
 } zcopy_comp_t;
 
+static iface_info_t * molecule_if_info;
+static uct_ep_h	      molecule_ep;
+static uint8_t 	      molecule_id;
+
+static iface_info_t * server_molecule_if_info;
+static uct_ep_h	      server_molecule_ep;
+static uint8_t 	      server_molecule_id;
+
+static iface_info_t * client_molecule_if_info;
+static uct_ep_h	      client_molecule_ep;
+static uint8_t 	      client_molecule_id;
+
 static void* desc_holder = NULL;
+
+static void* client_desc_holder = NULL;
+static void* server_desc_holder = NULL;
 
 int print_err_usage(void);
 
@@ -174,6 +189,7 @@ ucs_status_t do_am_bcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
 }
 
 /* Completion callback for am_zcopy */
+#if 0
 void zcopy_completion_cb(uct_completion_t *self)
 {
     zcopy_comp_t *comp = (zcopy_comp_t *)self;
@@ -183,7 +199,29 @@ void zcopy_completion_cb(uct_completion_t *self)
     }
     desc_holder = (void *)0xDEADBEEF;
 }
+#endif
 
+void client_zcopy_completion_cb(uct_completion_t *self)
+{
+    zcopy_comp_t *comp = (zcopy_comp_t *)self;
+    assert((comp->uct_comp.count == 0) && (self->status == UCS_OK));
+    if (comp->memh != UCT_MEM_HANDLE_NULL) {
+        uct_md_mem_dereg(comp->md, comp->memh);
+    }
+    client_desc_holder = (void *)0xDEADBEEF;
+}
+
+void server_zcopy_completion_cb(uct_completion_t *self)
+{
+    zcopy_comp_t *comp = (zcopy_comp_t *)self;
+    assert((comp->uct_comp.count == 0) && (self->status == UCS_OK));
+    if (comp->memh != UCT_MEM_HANDLE_NULL) {
+        uct_md_mem_dereg(comp->md, comp->memh);
+    }
+    server_desc_holder = (void *)0xDEADBEEF;
+}
+
+#if 0
 ucs_status_t do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
                          const cmd_args_t *cmd_args, char *buf)
 {
@@ -279,6 +317,106 @@ ucs_status_t molecule_do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id
     return status;
 }
 
+#endif
+
+ucs_status_t client_molecule_do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
+                         int len, char *buf)
+{
+    ucs_status_t status = UCS_OK;
+    uct_mem_h memh;
+    uct_iov_t iov;
+    zcopy_comp_t comp;
+
+//    fprintf(stderr, "[MoleculeOS@%s] if_info: 0x%p, ep: 0x%p, id: 0x%x, len: %d, buf: 0x%p\n",
+//		    __func__, if_info, ep, id, len, buf);
+
+    if (if_info->md_attr.cap.flags & UCT_MD_FLAG_NEED_MEMH) {
+        status = uct_md_mem_reg(if_info->md, buf, len,
+                                UCT_MD_MEM_ACCESS_RMA, &memh);
+    } else {
+        memh = UCT_MEM_HANDLE_NULL;
+    }
+
+    iov.buffer = buf;
+    iov.length = len;
+    iov.memh   = memh;
+    iov.stride = 0;
+    iov.count  = 1;
+
+    comp.uct_comp.func   = client_zcopy_completion_cb;
+    comp.uct_comp.count  = 1;
+    comp.uct_comp.status = UCS_OK;
+    comp.md              = if_info->md;
+    comp.memh            = memh;
+
+    if (status == UCS_OK) {
+        do {
+            status = uct_ep_am_zcopy(ep, id, NULL, 0, &iov, 1, 0,
+                                     (uct_completion_t *)&comp);
+            uct_worker_progress(if_info->worker);
+        } while (status == UCS_ERR_NO_RESOURCE);
+
+        if (status == UCS_INPROGRESS) {
+            while (!client_desc_holder) {
+                /* Explicitly progress outstanding active message request */
+                uct_worker_progress(if_info->worker);
+            }
+            status = UCS_OK;
+        }
+    }
+    client_desc_holder = (void *)NULL; //set to NULL back before we return
+    return status;
+}
+
+ucs_status_t server_molecule_do_am_zcopy(iface_info_t *if_info, uct_ep_h ep, uint8_t id,
+                         int len, char *buf)
+{
+    ucs_status_t status = UCS_OK;
+    uct_mem_h memh;
+    uct_iov_t iov;
+    zcopy_comp_t comp;
+
+//    fprintf(stderr, "[MoleculeOS@%s] if_info: 0x%p, ep: 0x%p, id: 0x%x, len: %d, buf: 0x%p\n",
+//		    __func__, if_info, ep, id, len, buf);
+
+    if (if_info->md_attr.cap.flags & UCT_MD_FLAG_NEED_MEMH) {
+        status = uct_md_mem_reg(if_info->md, buf, len,
+                                UCT_MD_MEM_ACCESS_RMA, &memh);
+    } else {
+        memh = UCT_MEM_HANDLE_NULL;
+    }
+
+    iov.buffer = buf;
+    iov.length = len;
+    iov.memh   = memh;
+    iov.stride = 0;
+    iov.count  = 1;
+
+    comp.uct_comp.func   = server_zcopy_completion_cb;
+    comp.uct_comp.count  = 1;
+    comp.uct_comp.status = UCS_OK;
+    comp.md              = if_info->md;
+    comp.memh            = memh;
+
+    if (status == UCS_OK) {
+        do {
+            status = uct_ep_am_zcopy(ep, id, NULL, 0, &iov, 1, 0,
+                                     (uct_completion_t *)&comp);
+            uct_worker_progress(if_info->worker);
+        } while (status == UCS_ERR_NO_RESOURCE);
+
+        if (status == UCS_INPROGRESS) {
+            while (!server_desc_holder) {
+                /* Explicitly progress outstanding active message request */
+                uct_worker_progress(if_info->worker);
+            }
+            status = UCS_OK;
+        }
+    }
+    server_desc_holder = (void *)NULL; //set to NULL back before we return
+    return status;
+}
+
 static void print_strings(const char *label, const char *local_str,
                           const char *remote_str, size_t length)
 {
@@ -288,6 +426,7 @@ static void print_strings(const char *label, const char *local_str,
     fflush(stdout);
 }
 
+#if 0
 /* Callback to handle receive active message */
 static ucs_status_t hello_world(void *arg, void *data, size_t length,
                                 unsigned flags)
@@ -314,6 +453,63 @@ static ucs_status_t hello_world(void *arg, void *data, size_t length,
     rdesc->len = length;
     memcpy(rdesc + 1, data, length);
     desc_holder = rdesc;
+    return UCS_OK;
+}
+#endif
+
+static ucs_status_t client_hello_world(void *arg, void *data, size_t length,
+                                unsigned flags)
+{
+    func_am_t func_am_type = *(func_am_t *)arg;
+    recv_desc_t *rdesc;
+
+    //print_strings("callback", func_am_t_str(func_am_type), data, length);
+
+    if (flags & UCT_CB_PARAM_FLAG_DESC) {
+        rdesc = (recv_desc_t *)data - 1;
+        /* Hold descriptor to release later and return UCS_INPROGRESS */
+        rdesc->is_uct_desc = 1;
+        rdesc->len = length;
+        client_desc_holder = rdesc;
+        return UCS_INPROGRESS;
+    }
+
+    /* We need to copy-out data and return UCS_OK if want to use the data
+     * outside the callback */
+    rdesc = malloc(sizeof(*rdesc) + length);
+    CHKERR_ACTION(rdesc == NULL, "allocate memory\n", return UCS_ERR_NO_MEMORY);
+    rdesc->is_uct_desc = 0;
+    rdesc->len = length;
+    memcpy(rdesc + 1, data, length);
+    client_desc_holder = rdesc;
+    return UCS_OK;
+}
+
+static ucs_status_t server_hello_world(void *arg, void *data, size_t length,
+                                unsigned flags)
+{
+    func_am_t func_am_type = *(func_am_t *)arg;
+    recv_desc_t *rdesc;
+
+    //print_strings("callback", func_am_t_str(func_am_type), data, length);
+
+    if (flags & UCT_CB_PARAM_FLAG_DESC) {
+        rdesc = (recv_desc_t *)data - 1;
+        /* Hold descriptor to release later and return UCS_INPROGRESS */
+        rdesc->is_uct_desc = 1;
+        rdesc->len = length;
+        server_desc_holder = rdesc;
+        return UCS_INPROGRESS;
+    }
+
+    /* We need to copy-out data and return UCS_OK if want to use the data
+     * outside the callback */
+    rdesc = malloc(sizeof(*rdesc) + length);
+    CHKERR_ACTION(rdesc == NULL, "allocate memory\n", return UCS_ERR_NO_MEMORY);
+    rdesc->is_uct_desc = 0;
+    rdesc->len = length;
+    memcpy(rdesc + 1, data, length);
+    server_desc_holder = rdesc;
     return UCS_OK;
 }
 
@@ -645,18 +841,13 @@ int sendrecv(int sock, const void *sbuf, size_t slen, void **rbuf)
     return 0;
 }
 
-static iface_info_t * molecule_if_info;
-static uct_ep_h	      molecule_ep;
-static uint8_t 	      molecule_id;
-
-
 /*
  * Molecule_send_msg
  * */
 int molecule_send_msg(char* msg_buf, int len,
 		iface_info_t * if_info,
 		uct_ep_h  ep,
-    		uint8_t  id)
+    		uint8_t  id, int is_server) //is_server is a flag
 {
     ucs_status_t        status      = UCS_OK; /* status codes for UCS */
     int                 res;
@@ -671,7 +862,11 @@ int molecule_send_msg(char* msg_buf, int len,
 
     //fprintf(stderr, "[Debug@%s] flag-2\n", __func__);
     //status = molecule_do_am_short(if_info, ep, id, len, str);
-    status = molecule_do_am_zcopy(if_info, ep, id, len, str);
+    if (is_server)
+	    status = server_molecule_do_am_zcopy(if_info, ep, id, len, str);
+    else
+	    status = client_molecule_do_am_zcopy(if_info, ep, id, len, str);
+
     //fprintf(stderr, "[Debug@%s] flag-3\n", __func__);
 
     mem_type_free(str);
@@ -686,6 +881,7 @@ err:
 /*
  * Molecule_recv_msg
  * */
+#if 0
 int molecule_recv_msg(char* msg_buf, int len,
 		iface_info_t * if_info,
 		uct_ep_h  ep,
@@ -715,6 +911,67 @@ int molecule_recv_msg(char* msg_buf, int len,
 	desc_holder = NULL;  //set to NULL back before we return
 	return rdesc->len;
 }
+#endif
+
+int client_molecule_recv_msg(char* msg_buf, int len,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+        recv_desc_t *rdesc;
+        while (client_desc_holder == NULL) {
+            /* Explicitly progress any outstanding active message requests */
+            uct_worker_progress(if_info->worker);
+        }
+
+        rdesc = client_desc_holder;
+//        print_strings("main", func_am_t_str(cmd_args->func_am_type),
+//                      (char *)(rdesc + 1), rdesc->len);
+	memcpy(msg_buf, (char *)(rdesc + 1), rdesc->len);
+	msg_buf[rdesc->len] = '\0';
+
+#if 1
+        if (rdesc->is_uct_desc) {
+            /* Release descriptor because callback returns UCS_INPROGRESS */
+            uct_iface_release_desc(rdesc);
+        } else {
+            free(rdesc);
+        }
+#endif
+
+	client_desc_holder = NULL;  //set to NULL back before we return
+	return rdesc->len;
+}
+
+int server_molecule_recv_msg(char* msg_buf, int len,
+		iface_info_t * if_info,
+		uct_ep_h  ep,
+    		uint8_t  id)
+{
+        recv_desc_t *rdesc;
+        while (server_desc_holder == NULL) {
+            /* Explicitly progress any outstanding active message requests */
+            uct_worker_progress(if_info->worker);
+        }
+
+        rdesc = server_desc_holder;
+//        print_strings("main", func_am_t_str(cmd_args->func_am_type),
+//                      (char *)(rdesc + 1), rdesc->len);
+	memcpy(msg_buf, (char *)(rdesc + 1), rdesc->len);
+	msg_buf[rdesc->len] = '\0';
+
+#if 1
+        if (rdesc->is_uct_desc) {
+            /* Release descriptor because callback returns UCS_INPROGRESS */
+            uct_iface_release_desc(rdesc);
+        } else {
+            free(rdesc);
+        }
+#endif
+
+	server_desc_holder = NULL;  //set to NULL back before we return
+	return rdesc->len;
+}
 
 int dsm_call(char* buf, int len){
 	int ret;
@@ -722,9 +979,18 @@ int dsm_call(char* buf, int len){
     	//molecule_send_msg(molecule_client_remote_ep, molecule_client_ucp_worker, buf, len);
 	//molecule_recv_msg(molecule_client_remote_ep, molecule_client_ucp_worker, dsm_resp_buf, 4096);
 	//fprintf(stderr, "[MoleculeOS@%s] dsm req:%s, len(%d)\n",__func__, buf, len);
+#if 0
     	molecule_send_msg(buf, len, molecule_if_info, molecule_ep, molecule_id);
 	molecule_recv_msg(dsm_resp_buf, 256, molecule_if_info, molecule_ep, molecule_id);
+#else
+	fprintf(stderr, "[DSM layer@%s] before send\n", __func__);
+    	molecule_send_msg(buf, len, client_molecule_if_info, client_molecule_ep, client_molecule_id, 0);
+	fprintf(stderr, "[DSM layer@%s] wait for resp\n", __func__);
+	client_molecule_recv_msg(dsm_resp_buf, 256, client_molecule_if_info, client_molecule_ep, client_molecule_id);
+	fprintf(stderr, "[DSM layer@%s] after recv\n", __func__);
+#endif
 	sscanf(dsm_resp_buf, DSM_RSP_FORMAT, &ret);
+
 #ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[MoleculeOS@%s] Recv DSM resp: %s\n",
 			    __func__, dsm_resp_buf);
@@ -749,6 +1015,7 @@ void run_client(cmd_args_t * cmd_args,
     //while (1){}
 
 
+#if 0
     char *str = (char *)mem_type_malloc(cmd_args->test_strlen);
     CHKERR_ACTION(str == NULL, "allocate memory",
                   status = UCS_ERR_NO_MEMORY; goto err);
@@ -776,6 +1043,7 @@ void run_client(cmd_args_t * cmd_args,
 	fprintf(stderr,"[%s] got %s\n", __func__, resp_buf);
 	sleep(1);
     }
+#endif
     while (1){sleep(100);} //loop here
 
     return;
@@ -810,7 +1078,7 @@ void run_server(cmd_args_t * cmd_args,
     	        char dsm_call_buf[256];
     	        char dsm_resp_buf[256];
     	        //molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
-		molecule_recv_msg(dsm_call_buf, 256, if_info, ep, id);
+		server_molecule_recv_msg(dsm_call_buf, 256, if_info, ep, id);
 #ifdef DEBUG
     	        fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
     	    		    __func__, dsm_call_buf);
@@ -822,7 +1090,7 @@ void run_server(cmd_args_t * cmd_args,
     	    	
     	        sprintf(dsm_resp_buf, DSM_RSP_FORMAT, ret);
 
-    		molecule_send_msg(dsm_resp_buf, 256, if_info, ep, id);
+    		molecule_send_msg(dsm_resp_buf, 256, if_info, ep, id, 1);
     		//molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_resp_buf, 4096);
     	}
 #endif
@@ -830,9 +1098,9 @@ void run_server(cmd_args_t * cmd_args,
 	/* Old loops */
 	while (1) {
 		char req_buf[256];
-		molecule_recv_msg(req_buf, 256, if_info, ep, id);
+		server_molecule_recv_msg(req_buf, 256, if_info, ep, id);
 		fprintf(stderr,"[%s] got %s\n", __func__, req_buf);
-    		molecule_send_msg("Bye world\n", 10, if_info, ep, id);
+    		molecule_send_msg("Bye world\n", 10, if_info, ep, id, 1);
 #if 0
         	while (desc_holder == NULL) {
         	    /* Explicitly progress any outstanding active message requests */
@@ -856,6 +1124,35 @@ void run_server(cmd_args_t * cmd_args,
 	return;
 }
 
+void run_two_way_server(void)
+{
+        recv_desc_t *rdesc;
+	int ret;
+
+#if 1
+    	while (1) {
+    	        char dsm_call_buf[256];
+    	        char dsm_resp_buf[256];
+    	        //molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
+		server_molecule_recv_msg(dsm_call_buf, 256, server_molecule_if_info, server_molecule_ep, server_molecule_id);
+#ifdef DEBUG
+    	        fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
+    	    		    __func__, dsm_call_buf);
+#endif
+//    		molecule_send_msg("Bye world\n", 10, if_info, ep, id);
+//		continue;
+
+    	        ret = dsm_handlers(dsm_call_buf, 256);
+    	    	
+    	        sprintf(dsm_resp_buf, DSM_RSP_FORMAT, ret);
+
+    		molecule_send_msg(dsm_resp_buf, 256, server_molecule_if_info, server_molecule_ep, server_molecule_id, 1);
+    		//molecule_send_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_resp_buf, 4096);
+    	}
+#endif
+
+	return;
+}
 /*
  * Input: client_target_name
  * 	NULL: this is the server side
@@ -883,6 +1180,184 @@ void run_server(cmd_args_t * cmd_args,
  * 							Notes By Dong Du
  *
  * */
+
+void molecule_prepare_dsm_ctx(char* client_target_name, int pu_id, char* dev_name, char* tl_name, iface_info_t* if_info,
+		iface_info_t ** ctx_molecule_if_info, uct_ep_h *ctx_molecule_ep, uint8_t * ctx_molecule_id)
+{
+    uct_device_addr_t   *peer_dev   = NULL;
+    uct_iface_addr_t    *peer_iface = NULL;
+    uct_ep_addr_t       *own_ep     = NULL;
+    uct_ep_addr_t       *peer_ep    = NULL;
+    uint8_t             id          = 0;
+    int                 oob_sock    = -1;  /* OOB connection socket */
+    ucs_status_t        status      = UCS_OK; /* status codes for UCS */
+    uct_device_addr_t   *own_dev;
+    uct_iface_addr_t    *own_iface;
+    uct_ep_h            ep;                   /* Remote endpoint */
+    ucs_async_context_t *async;               /* Async event context manages
+                                                 times and fd notifications */
+    cmd_args_t          cmd_args;
+//    iface_info_t        if_info;
+    uct_ep_params_t     ep_params;
+    int                 res;
+
+    /* Defaults */
+    cmd_args.server_port   	= 13337;
+    //cmd_args.func_am_type  	= FUNC_AM_SHORT;
+    cmd_args.func_am_type  	= FUNC_AM_ZCOPY;
+    cmd_args.test_strlen   	= 16;
+
+    cmd_args.server_name	= client_target_name;
+    cmd_args.dev_name	= dev_name;
+    cmd_args.tl_name	= tl_name;
+
+    /* Initialize context
+     * It is better to use different contexts for different workers */
+    //status = ucs_async_context_create(UCS_ASYNC_MODE_THREAD_SPINLOCK, &async);
+    status = ucs_async_context_create(UCS_ASYNC_MODE_THREAD_MUTEX, &async);
+    CHKERR_JUMP(UCS_OK != status, "init async context", out);
+
+    /* Create a worker object */
+    //status = uct_worker_create(async, UCS_THREAD_MODE_SINGLE, &if_info.worker);
+    status = uct_worker_create(async, UCS_THREAD_MODE_SERIALIZED, &if_info->worker);
+    CHKERR_JUMP(UCS_OK != status, "create worker", out_cleanup_async);
+
+    /* Search for the desired transport */
+    status = dev_tl_lookup(&cmd_args, if_info);
+    CHKERR_JUMP(UCS_OK != status, "find supported device and transport",
+                out_destroy_worker);
+
+    own_dev = (uct_device_addr_t*)calloc(1, if_info->iface_attr.device_addr_len);
+    CHKERR_JUMP(NULL == own_dev, "allocate memory for dev addr",
+                out_destroy_iface);
+
+    own_iface = (uct_iface_addr_t*)calloc(1, if_info->iface_attr.iface_addr_len);
+    CHKERR_JUMP(NULL == own_iface, "allocate memory for if addr",
+                out_free_dev_addrs);
+
+    /* Get device address */
+    status = uct_iface_get_device_address(if_info->iface, own_dev);
+    CHKERR_JUMP(UCS_OK != status, "get device address", out_free_if_addrs);
+
+    if (cmd_args.server_name) {
+        oob_sock = client_connect(cmd_args.server_name, cmd_args.server_port);
+	//fprintf(stderr, "[Error@%s] do not pass server name here!\n");
+    } else {
+        oob_sock = server_connect(cmd_args.server_port);
+    }
+    CHKERR_ACTION(oob_sock < 0, "OOB connect",
+                  status = UCS_ERR_IO_ERROR; goto out_close_oob_sock);
+
+    res = sendrecv(oob_sock, own_dev, if_info->iface_attr.device_addr_len,
+                   (void **)&peer_dev);
+    CHKERR_ACTION(0 != res, "device exchange",
+                  status = UCS_ERR_NO_MESSAGE; goto out_close_oob_sock);
+
+    status = (ucs_status_t)uct_iface_is_reachable(if_info->iface, peer_dev, NULL);
+    CHKERR_JUMP(0 == status, "reach the peer", out_close_oob_sock);
+
+    /* Get interface address */
+    if (if_info->iface_attr.cap.flags & UCT_IFACE_FLAG_CONNECT_TO_IFACE) {
+        status = uct_iface_get_address(if_info->iface, own_iface);
+        CHKERR_JUMP(UCS_OK != status, "get interface address",
+                    out_close_oob_sock);
+
+        status = (ucs_status_t)sendrecv(oob_sock, own_iface, if_info->iface_attr.iface_addr_len,
+                                        (void **)&peer_iface);
+        CHKERR_JUMP(0 != status, "ifaces exchange", out_close_oob_sock);
+    }
+    ep_params.field_mask = UCT_EP_PARAM_FIELD_IFACE;
+    ep_params.iface      = if_info->iface;
+
+    if (if_info->iface_attr.cap.flags & UCT_IFACE_FLAG_CONNECT_TO_EP) {
+        own_ep = (uct_ep_addr_t*)calloc(1, if_info->iface_attr.ep_addr_len);
+        CHKERR_ACTION(NULL == own_ep, "allocate memory for ep addrs",
+                      status = UCS_ERR_NO_MEMORY; goto out_close_oob_sock);
+
+        /* Create new endpoint */
+        status = uct_ep_create(&ep_params, &ep);
+        CHKERR_JUMP(UCS_OK != status, "create endpoint", out_free_ep_addrs);
+
+        /* Get endpoint address */
+        status = uct_ep_get_address(ep, own_ep);
+        CHKERR_JUMP(UCS_OK != status, "get endpoint address", out_free_ep);
+
+        status = (ucs_status_t)sendrecv(oob_sock, own_ep, if_info->iface_attr.ep_addr_len,
+                                        (void **)&peer_ep);
+        CHKERR_JUMP(0 != status, "EPs exchange", out_free_ep);
+
+        /* Connect endpoint to a remote endpoint */
+        status = uct_ep_connect_to_ep(ep, peer_dev, peer_ep);
+        if (barrier(oob_sock)) {
+            status = UCS_ERR_IO_ERROR;
+            goto out_free_ep;
+        }
+    } else if (if_info->iface_attr.cap.flags & UCT_IFACE_FLAG_CONNECT_TO_IFACE) {
+        /* Create an endpoint which is connected to a remote interface */
+        ep_params.field_mask |= UCT_EP_PARAM_FIELD_DEV_ADDR |
+                                UCT_EP_PARAM_FIELD_IFACE_ADDR;
+        ep_params.dev_addr    = peer_dev;
+        ep_params.iface_addr  = peer_iface;
+        status = uct_ep_create(&ep_params, &ep);
+        CHKERR_JUMP(UCS_OK != status, "create endpoint", out_free_ep_addrs);
+    } else {
+        status = UCS_ERR_UNSUPPORTED;
+        goto out_free_ep_addrs;
+    }
+    /* Dump info here (Dd) */
+    fprintf(stderr, "[Info@Molecule UCT DSM] am_type: %d, max_size: %d Bytes\n",
+		    cmd_args.func_am_type,
+		    func_am_max_size(cmd_args.func_am_type, &if_info->iface_attr)
+	);
+
+    if (cmd_args.test_strlen > func_am_max_size(cmd_args.func_am_type, &if_info->iface_attr)) {
+        status = UCS_ERR_UNSUPPORTED;
+        fprintf(stderr, "Test string is too long: %ld, max supported: %lu\n",
+                cmd_args.test_strlen,
+                func_am_max_size(cmd_args.func_am_type, &if_info->iface_attr));
+        goto out_free_ep;
+    }
+
+    /* Set active message handler */
+    if (cmd_args.server_name) {
+    	status = uct_iface_set_am_handler(if_info->iface, id, client_hello_world,
+                                      &cmd_args.func_am_type, 0);
+    }else{
+    	status = uct_iface_set_am_handler(if_info->iface, id, server_hello_world,
+                                      &cmd_args.func_am_type, 0);
+    }
+    CHKERR_JUMP(UCS_OK != status, "set callback", out_free_ep);
+
+        fprintf(stderr, "[DSM layer@%s] Info: if_info: %p\n", __func__, if_info);
+	*ctx_molecule_if_info = if_info;
+	*ctx_molecule_ep = ep;
+	*ctx_molecule_id = id;
+	//	static iface_info_t ** ctx_molecule_if_info, uct_ep_h *ctx_molecule_ep, uint8_t * ctx_molecule_id)
+      return;
+out_free_ep:
+    uct_ep_destroy(ep);
+out_free_ep_addrs:
+    free(own_ep);
+    free(peer_ep);
+out_close_oob_sock:
+    close(oob_sock);
+out_free_if_addrs:
+    free(own_iface);
+    free(peer_iface);
+out_free_dev_addrs:
+    free(own_dev);
+    free(peer_dev);
+out_destroy_iface:
+    uct_iface_close(if_info->iface);
+    uct_md_close(if_info->md);
+out_destroy_worker:
+    uct_worker_destroy(if_info->worker);
+out_cleanup_async:
+    ucs_async_context_destroy(async);
+out:
+    return;
+}
+
 int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, char* tl_name)
 {
     uct_device_addr_t   *peer_dev   = NULL;
@@ -902,6 +1377,7 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
     uct_ep_params_t     ep_params;
     int                 res;
 
+#if 0 //TWO_WAY_COMM Begin
     /* Parse the command line */
 #if 0
     if (parse_cmd(argc, argv, &cmd_args)) {
@@ -1076,6 +1552,34 @@ int uct_molecule_dsm_init(char* client_target_name, int pu_id, char* dev_name, c
         }
 #endif
     }
+#endif //TWO_WAY_COMM end
+
+    iface_info_t        server_if_info;
+    iface_info_t        client_if_info;
+    if (pu_id == 0){
+	    //I am server first
+	molecule_prepare_dsm_ctx(NULL, pu_id, dev_name, tl_name, &server_if_info,
+			&server_molecule_if_info, &server_molecule_ep, &server_molecule_id);
+	fprintf(stderr, "[DSM layer] server register finished, server_if_info: %p\n", server_molecule_if_info);
+	   //Now I register myself as client
+	molecule_prepare_dsm_ctx(client_target_name, pu_id, dev_name, tl_name, &client_if_info,
+			&client_molecule_if_info, &client_molecule_ep, &client_molecule_id);
+	fprintf(stderr, "[DSM layer] client register finished\n");
+    }else{
+	    //I am client first
+	molecule_prepare_dsm_ctx(client_target_name, pu_id, dev_name, tl_name, &client_if_info,
+			&client_molecule_if_info, &client_molecule_ep, &client_molecule_id);
+	fprintf(stderr, "[DSM layer] client register finished, client_if_info: %p\n", client_molecule_if_info);
+	   //Now I register myself as server
+	molecule_prepare_dsm_ctx(NULL, pu_id, dev_name, tl_name, &server_if_info,
+			&server_molecule_if_info, &server_molecule_ep, &server_molecule_id);
+	fprintf(stderr, "[DSM layer] server register finished\n");
+    
+	//while (1) {sleep(1);}
+    }
+
+    fprintf(stderr, "[DSM layer] Trap into server loop\n");
+    run_two_way_server();
 
     if (barrier(oob_sock)) {
         status = UCS_ERR_IO_ERROR;
