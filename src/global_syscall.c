@@ -415,14 +415,14 @@ int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 {
 //#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
 //#define DSM_RSP_FORMAT "ret: %d"
-	char buffer[256];
+	char buffer[4096];
 	int ret;
 	ret = sprintf(buffer, DSM_REQ_FORMAT, 0, "WRITEFIFO", global_fifo, 0, 0, 0, length);
-	assert(ret+length<256);
+	assert(ret+length<4096);
 	memcpy(buffer+ret, shared_memory, length);
 	buffer[ret+length] = '\0';
 
-	dsm_call(buffer, 256);
+	dsm_call(buffer, ret+length+1);
 
 	return 0;
 }

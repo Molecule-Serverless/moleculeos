@@ -1131,10 +1131,10 @@ void run_two_way_server(void)
 
 #if 1
     	while (1) {
-    	        char dsm_call_buf[256];
+    	        char dsm_call_buf[4096];
     	        char dsm_resp_buf[256];
     	        //molecule_recv_msg(molecule_server_remote_ep, molecule_server_ucp_worker, dsm_call_buf, 4096);
-		server_molecule_recv_msg(dsm_call_buf, 256, server_molecule_if_info, server_molecule_ep, server_molecule_id);
+		server_molecule_recv_msg(dsm_call_buf, 4096, server_molecule_if_info, server_molecule_ep, server_molecule_id);
 #ifdef DEBUG
     	        fprintf(stderr, "[MoleculeOS@%s] Recv DSM req: %s\n",
     	    		    __func__, dsm_call_buf);
@@ -1142,7 +1142,7 @@ void run_two_way_server(void)
 //    		molecule_send_msg("Bye world\n", 10, if_info, ep, id);
 //		continue;
 
-    	        ret = dsm_handlers(dsm_call_buf, 256);
+    	        ret = dsm_handlers(dsm_call_buf, 4096);
     	    	
     	        sprintf(dsm_resp_buf, DSM_RSP_FORMAT, ret);
 
