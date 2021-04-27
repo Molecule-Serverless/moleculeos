@@ -211,6 +211,9 @@ int global_os_init(int pu_id, int os_port)
 
 	fprintf(stderr, "MoleculeOS inited, PU_ID: %d, OS_port: %d\n",
 			current_pu_id, global_os_port);
+
+	fprintf(stderr, "MoleculeOS inited, init global_fifo_now: %d\n",
+			global_fifo_now);
 	return 0;
 }
 
@@ -309,7 +312,7 @@ int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 		struct perm_container perm = {0x3, owner_pid};
 		global_fifo_list[global_fifo_now].pu_id = current_pu_id;
 		global_fifo_list[global_fifo_now].global_id = global_fifo_now;
-		ret = global_process_now;
+		ret = global_fifo_now;
 
 		global_fifo_list[global_fifo_now].local_uuid = local_uuid;
 		global_fifo_list[global_fifo_now].owner_pid = owner_pid;
