@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include <common/common.h>
+#include <common/benchmarks.h>
 
 static int global_OS_id = -1;
 static int self_global_id = -1;
@@ -227,6 +228,7 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 	/* FIXME: we need a shm mechanism here */
 #endif
 
+	fprintf(stderr, "[MoleculeOS Info@%s] before syscall: %u us\n", __func__, now()/1000);
 	assert(len<=4096);
 
 	memcpy(shared_memory, buf, len);
@@ -239,6 +241,7 @@ int global_fifo_write(int global_fifo, char*buf, int len) //write to a global fi
 #ifndef MOLECULE_CLEAN
 	fprintf(stderr, "[%s] invoked\n", __func__);
 #endif
+	fprintf(stderr, "[MoleculeOS Info@%s] after syscall: %u us\n", __func__, now()/1000);
 	return ret;
 }
 
@@ -252,9 +255,9 @@ int global_grant_perm(int global_pid, int global_fd, int perm) //grant perm of a
 //We do not allow file_actions and attrp in gspawn
 int global_spawn(int pu_id, //pu_id is the target pu of spawn
 		int *global_pid,
-		const char *restrict path,
-		char *const argv[restrict],
-		char* const envp[restrict])
+		const char * path,
+		char *const argv[],
+		char* const envp[])
 {
 	int ret;
 	char buffer[256];
