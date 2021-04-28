@@ -422,6 +422,7 @@ int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 	memcpy(buffer+ret, shared_memory, length);
 	buffer[ret+length] = '\0';
 
+	//dsm_call(buffer, 256);
 	dsm_call(buffer, ret+length+1);
 
 	return 0;
