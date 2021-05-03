@@ -106,7 +106,7 @@ userlib: $(USER_LIB_SOURCES)
 	@cp include/global_syscall_runtime.h ./moleculeOS-userlib/include/
 	@cp include/molecule-ipc.h ./moleculeOS-userlib/include/
 	@cp include/chos ./moleculeOS-userlib/include/ -r
-	@gcc -c $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
+	@gcc -c -fPIC $^ -Ilocal-ipc/ -Iinclude/ -DMOLECULE_CLEAN
 	@ar rcs libmoleculeos.a $(USER_LIB_OBJS)
 	@echo Build Userlib sucessfully, static lib is libmoleculeos.a
 	@echo You can also use source code in moleculeOS-userlib, and include files: -ImoleculeOS-userlib/include and -ImoleculeOS-userlib/local-ipc
