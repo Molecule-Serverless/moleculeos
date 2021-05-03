@@ -46,6 +46,27 @@ int fifo_init(void) //return a self-fifo (named using self pid).
 	return fifo_fd;
 }
 
+/* FIFO-based IPC */
+int fifo_init_uuid(int uuid) //return a self-fifo (named using self pid).
+{
+	char fifo_path[FIFO_PATH_LEN]="";
+	int fifo_fd;
+	sprintf(fifo_path, FIFO_PATH_TEMPLATE, uuid);
+	fprintf(stderr, "[%s] fifo_path: %s\n",__func__, fifo_path);
+	if (mkfifo(fifo_path, 0666) > 0) {
+		throw("Error creating FIFO in server\n");
+	}
+	fprintf(stderr, "[%s] mkfifo success\n",__func__);
+
+	/* Open a self-fifo, read-only */
+	if ((fifo_fd = open(fifo_path, O_RDWR)) <0){
+		throw("Error opening FIFO in server\n");
+	}
+	fprintf(stderr, "[%s] open success\n",__func__);
+
+	return fifo_fd;
+}
+
 int fifo_client_setup(int uuid) {
 	char fifo_path[FIFO_PATH_LEN]="";
 	int fifo_fd;

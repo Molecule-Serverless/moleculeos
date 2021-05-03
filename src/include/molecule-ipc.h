@@ -47,6 +47,7 @@ int fifo_client_setup(int uuid); //return a fifo_fd
 int fifo_server_setup(int uuid); //return a fifo_fd
 
 int fifo_init(void); //return a self-fifo (named using self pid).
+int fifo_init_uuid(int uuid); //return a self-fifo (named using self pid).
 int fifo_connect(int uuid); //connect to fifo-uuid, return a fifo_fd
 
 void fifo_close(int fifo_fd) ;
