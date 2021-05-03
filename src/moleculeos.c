@@ -116,7 +116,7 @@ void * globalOS_DSM(void)
 				dev_name, tl_name);
 		//pu_id not used
 		//molecule_dsm_init(NULL, 0);
-		uct_molecule_dsm_init(NULL, 0, dev_name, tl_name);
+		uct_molecule_dsm_init(dsm_master_addr, pu_id, dev_name, tl_name);
 	}
 	else{
 		//FIXME: how should we know the addr of server?
@@ -125,7 +125,7 @@ void * globalOS_DSM(void)
 				dev_name, tl_name);
 		//pu_id not used
 		//molecule_dsm_init(dsm_master_addr, 0);
-		uct_molecule_dsm_init(dsm_master_addr, 0, dev_name, tl_name);
+		uct_molecule_dsm_init(dsm_master_addr, pu_id, dev_name, tl_name);
 	}
 
 	while (1){

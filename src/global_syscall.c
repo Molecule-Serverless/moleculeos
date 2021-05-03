@@ -211,6 +211,9 @@ int global_os_init(int pu_id, int os_port)
 
 	fprintf(stderr, "MoleculeOS inited, PU_ID: %d, OS_port: %d\n",
 			current_pu_id, global_os_port);
+
+	fprintf(stderr, "MoleculeOS inited, init global_fifo_now: %d\n",
+			global_fifo_now);
 	return 0;
 }
 
@@ -309,7 +312,7 @@ int syscall_fifo_init(int local_uuid, int owner_pid, int global_uuid)
 		struct perm_container perm = {0x3, owner_pid};
 		global_fifo_list[global_fifo_now].pu_id = current_pu_id;
 		global_fifo_list[global_fifo_now].global_id = global_fifo_now;
-		ret = global_process_now;
+		ret = global_fifo_now;
 
 		global_fifo_list[global_fifo_now].local_uuid = local_uuid;
 		global_fifo_list[global_fifo_now].owner_pid = owner_pid;
@@ -412,14 +415,15 @@ int write_remote_fifo(int global_fifo, char* shared_memory, int length)
 {
 //#define DSM_REQ_FORMAT "gpid: %d func:%s args1:%d args2:%d args3:%d args4:%d buf_len:%d "
 //#define DSM_RSP_FORMAT "ret: %d"
-	char buffer[256];
+	char buffer[4096];
 	int ret;
 	ret = sprintf(buffer, DSM_REQ_FORMAT, 0, "WRITEFIFO", global_fifo, 0, 0, 0, length);
-	assert(ret+length<256);
+	assert(ret+length<4096);
 	memcpy(buffer+ret, shared_memory, length);
 	buffer[ret+length] = '\0';
 
-	dsm_call(buffer, 256);
+	//dsm_call(buffer, 256);
+	dsm_call(buffer, ret+length+1);
 
 	return 0;
 }

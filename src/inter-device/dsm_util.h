@@ -257,7 +257,13 @@ int client_connect(const char *server, uint16_t server_port)
     memcpy(&conn_addr.sin_addr, he->h_addr_list[0], he->h_length);
     memset(conn_addr.sin_zero, 0, sizeof(conn_addr.sin_zero));
 
-    ret = connect(connfd, (struct sockaddr*)&conn_addr, sizeof(conn_addr));
+    // Keep looping, as we believe somehow the server will startup!
+    while (1){
+    	ret = connect(connfd, (struct sockaddr*)&conn_addr, sizeof(conn_addr));
+	if (ret>=0) break;
+	sleep(0.1);
+    }
+
     CHKERR_JUMP(ret < 0, "connect client", err_conn);
 
     return connfd;
