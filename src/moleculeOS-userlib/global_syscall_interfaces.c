@@ -120,7 +120,7 @@ int global_fifo_init_uuid(int local_fifo, int global_uuid) //return a global fif
 	int global_fifo_id;
 	char buffer[256];
 	fprintf(stderr, "[%s] invoked\n", __func__);
-	fprintf(stderr, "[%s] init with uuid %x\n", __func__, global_uuid);
+
 	//fifo_init(local_fifo);
 	sprintf(buffer, SYSCALL_REQ_FORMAT, self_global_id, "FIFO_INIT", local_fifo, self_global_id, global_uuid, 0);
 	global_fifo_id = invoke_global_syscall(global_OS_id, buffer);
