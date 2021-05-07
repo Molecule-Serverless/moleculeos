@@ -9,6 +9,16 @@ MoleculeOS now provides:
 - IPC (cross-device IPC, based on RDMA)
 - Vector Cgroups
 
+### LoC
+
+XPU-SHIM:
+	1200+974+116+813+439 = 3542
+	inter-device + top_dir + MPSC + localIPC + util
+
+Lib:
+
+
+
 
 ### Build
 
