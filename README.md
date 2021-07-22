@@ -16,9 +16,15 @@ Enter the source dir:
 
 	cd src
 
-Build MoleculeOS:
+Build MoleculeOS (Single-host mode by default):
 
-	make
+	make moleculeos
+
+Build MoleculeOS (Distributed mode by default):
+
+	make moleculeos-dist
+
+**Notes**: To build distributed mode moleculeOS, you should prepare a ucx in the same directory as moleculeos, the ucx should be built in a sub-directory named build in the ucx project, i.e., ucx/build/
 
 Build Demo Test:
 
