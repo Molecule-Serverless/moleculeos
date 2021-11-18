@@ -38,6 +38,8 @@ moleculeos-dist: moleculeos.c global_syscall.c ipc.c util/hashtable.c $(LOCAL_IP
 	gcc -o $@ $^ -Iinclude -Ilocal-ipc/ -I$(UCX_INCLUDE) -L$(UCX_LIB) -lucp -lucs -luct -lm -lpthread -DSMARTC -DMOLECULE_CLEAN 
 	@echo build $@ successfully, please set LD_LIBRARY_PATH, e.g., export LD_LIBRARY_PATH=$(UCX_LIB) before you run
 
+dist: moleculeos-dist
+
 $(SHM_GSYSCALL_CHANNEL_OBJS):  $(SHM_GSYSCALL_CHANNEL_SOURCES)
 	g++ -std=c++11 -O3 -DUSE_SHM=1 -c $^ -o $@ -Iinclude -lrt
 

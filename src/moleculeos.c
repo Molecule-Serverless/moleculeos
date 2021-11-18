@@ -176,6 +176,7 @@ void os_info(void)
 	 * FIXME: Do we have a better way to add colors to our output?
 	 * */
 	fprintf(stderr, "\033[40;31m [MoleculeOS] OS Info Begin===== \033[0m\n");
+	fprintf(stderr, "\033[40;31m ./moleculeos [-i PU_ID] [-p OS-ports] [-m dsm-master-addr] [-d dev_name] [-t transport_name]\033[0m \n");
 	fprintf(stderr, "\033[40;31m 1. Please ensure you have created /tmp/fifo_dir directory manually \033[0m \n");
 	fprintf(stderr, "\033[40;31m 2. Please check the PU id to ensure the value is valid!\033[0m \n");
 	fprintf(stderr, "\033[40;31m 3. If you want to kill MoleculeOS, it would be better to kill processes connected first :)\033[0m \n");
