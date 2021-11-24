@@ -270,7 +270,7 @@ int syscall_register_global(int local_pid)
 
     	    /* establish shm now */
     	    shm_uuid = ret; //global_process_now as uuid
-    	    sprintf(shmid_string, "/tmp/fifo_dir/shm-%d\0", shm_uuid);
+    	    sprintf(shmid_string, "/tmp/fifo_dir/shm-%d", shm_uuid);
     	    /*Create a shm file now */
     	    shm_fp = fopen(shmid_string, "ab+");
     	    if (!shm_fp){
@@ -350,7 +350,7 @@ int local_fifo_connect(int global_uuid)
 		printf("[MoleculeOS@%s] global_uuid(%d)'s global_fifo is :%d\n",
 				__func__, global_uuid, global_fifo);
 		return global_fifo;
-	}else 
+	}else
 		return -1;
 
 }
@@ -470,7 +470,7 @@ int syscall_fifo_write(int global_fifo, int shmid, int length)
 #else
 	//fprintf(stderr, "[MoleculeOS@%s] shmid: %x\n", __func__, shmid);
 	/* We can directly got the shm through process_list*/
-	shared_memory = global_process_list[shmid].shm;
+	shared_memory = (char*) global_process_list[shmid].shm;
 #endif
 
 	if (shared_memory < (char*)0) {
@@ -515,7 +515,7 @@ int syscall_gspawn(int pu_id, int shmid, int argv_len, int envp_len)
 	int len, i;
 
 	/* We can directly got the shm through process_list*/
-	shared_memory = global_process_list[shmid].shm;
+	shared_memory = (char*) global_process_list[shmid].shm;
 
 	if (shared_memory < (char*)0) {
 		//throw("Could not attach segment");
